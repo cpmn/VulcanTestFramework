@@ -115,7 +115,7 @@ Override from CLI:
 
 ## 📈 CI/CD Integration (Coming Soon)
 
-GitHub Actions workflow will include:
+    GitHub Actions workflow will include:
 	- Java + Gradle setup
 	- Test execution
 	- Report publishing
@@ -124,7 +124,7 @@ GitHub Actions workflow will include:
 
 ## 📝 Contributing
     
-Even as a personal project, standards are followed:
+    Even as a personal project, standards are followed:
     - Feature branches
 	- Meaningful commit messages
 	- PR-style development
