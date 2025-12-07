@@ -25,49 +25,9 @@ This project serves as a **professional starter-kit**, ideal for QA automation p
 
 ---
 
-## 🧭 Roadmap
-
-### **Phase 0 — Project Setup**
-- Gradle project initialization  
-- Base folders  
-- README and project vision  
-
-### **Phase 1 — Core Architecture**
-- `ConfigManager`  
-- `DriverFactory` (ThreadLocal-ready)  
-- `BasePage`  
-- `Hooks` for setup/teardown  
-
-### **Phase 2 — BDD Layer + Example Suite**
-- Login feature  
-- Step definitions  
-- Page Object  
-- Test runner  
-
-### **Phase 3 — Environment & Browser Support**
-- Config files (`dev`, `qa`, `prod`)  
-- Browser switching (Chrome, Firefox)  
-- CLI overrides via Gradle  
-
-### **Phase 4 — Reporting**
-- Cucumber HTML + JSON reports  
-- Optional: Allure reporting  
-
-### **Phase 5 — CI/CD Integration**
-- GitHub Actions workflow  
-- Upload reports as artifacts  
-- Build status badge  
-
-### **Phase 6 — Documentation**
-- How to add new tests  
-- How to add new Page Objects  
-- Architecture diagrams  
-- Design decisions  
-
----
 
 ## 🧩 Architecture Structure
-
+```bash
 VulcanTestFramework/
 ├─ build.gradle
 ├─ settings.gradle
@@ -87,7 +47,7 @@ VulcanTestFramework/
 │  │  └─ /resources
 │  │     ├─ features
 │  │     └─ config.properties
-
+```
 ### **Core Design Principles**
 - **Logical simplicity**  
 - **Single Responsibility Architecture**  
@@ -131,7 +91,7 @@ VulcanTestFramework/
 ### **Configuration**
 src/test/resources/config.properties
 ```bash
-baseUrl=https://www.saucedemo.com/
+baseUrl=https://www.tobedefined.com
 browser=chrome
 implicitWait=10
 ```
@@ -145,26 +105,27 @@ Override from CLI:
 ./gradlew test -Denv=qa
 ```
 ## 🧠 Design Decisions (The Vulcan Logic)
-	•	Use Page Object Model for maintainability
-	•	Use ThreadLocal WebDriver to support parallel execution
-	•	Separate test logic from UI interaction
-	•	Use external configuration for flexibility
-	•	Use hooks to orchestrate browser lifecycle
-	•	Keep code minimal, clear, and predictable
+    - Use Page Object Model for maintainability
+	- Use ThreadLocal WebDriver to support parallel execution
+	- Separate test logic from UI interaction
+	- Use external configuration for flexibility
+	- Use hooks to orchestrate browser lifecycle
+	- Keep code minimal, clear, and predictable
 ---
 
 ## 📈 CI/CD Integration (Coming Soon)
+
 GitHub Actions workflow will include:
-	•	Java + Gradle setup
-	•	Test execution
-	•	Report publishing
-	•	Build badge in README
+	- Java + Gradle setup
+	- Test execution
+	- Report publishing
+	- Build badge in README
 ---
 
 ## 📝 Contributing
-
+    
 Even as a personal project, standards are followed:
-	•	Feature branches
-	•	Meaningful commit messages
-	•	PR-style development
-	•	Code kept modular and documented
+    - Feature branches
+	- Meaningful commit messages
+	- PR-style development
+	- Code kept modular and documented
