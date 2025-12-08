@@ -1,3 +1,13 @@
+<!--
+
+VulcanTestFramework
+A QA Automation Project by Claudia Paola Muñoz (cpmn.tech)
+
+Copyright (c) 2025
+MIT License
+  
+-->
+
 # 🖖 VulcanTestFramework  
 **A logical, scalable, and modular UI Automation Framework built with Java, Selenium WebDriver, Cucumber (BDD), and Gradle.**
 
@@ -129,3 +139,7 @@ Override from CLI:
 	- Meaningful commit messages
 	- PR-style development
 	- Code kept modular and documented
+
+# 🖖 VulcanTestFramework  
+### © 2025 cpmn.tech — MIT License
+ 

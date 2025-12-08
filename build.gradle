@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) 2025 cpmn.tech
+ *
+ * Licensed under the MIT License.
+ * You may obtain a copy of the License at
+ * https://opensource.org/licenses/MIT
+ *
+ * This file is part of the VulcanTestFramework project.
+ * A QA Automation Project by Claudia Paola Muñoz (cpmn.tech)
+ */
+  
+plugins {
+    id 'java'
+}
+
+group = 'com.vulcan'
+version = '0.1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    // Java 17 (recommended for Selenium + Cucumber)
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+dependencies {
+    // Base test framework (JUnit 4)
+    testImplementation 'junit:junit:4.13.2'
+
+    // Selenium WebDriver
+    testImplementation 'org.seleniumhq.selenium:selenium-java:4.20.0'
+
+    // Cucumber JVM (Java + JUnit)
+    testImplementation 'io.cucumber:cucumber-java:7.15.0'
+    testImplementation 'io.cucumber:cucumber-junit:7.15.0'
+
+    // WebDriverManager (automatic driver downloads)
+    testImplementation 'io.github.bonigarcia:webdrivermanager:5.7.0'
+}
+
+test {
+    useJUnit()
+
+    // Show test results clearly in console
+    testLogging {
+        events "PASSED", "FAILED", "SKIPPED"
+    }
+
+    // Allow filtering test execution by Cucumber tags (optional)
+    systemProperty "cucumber.filter.tags", System.getProperty("cucumber.filter.tags")
+}
