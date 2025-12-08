@@ -1,0 +1,64 @@
+############################
+# Gradle
+############################
+.gradle/
+build/
+out/
+
+# Gradle Wrapper JAR (optional to ignore)
+# gradle/wrapper/gradle-wrapper.jar
+
+# Local Gradle config
+gradle-app.setting
+
+############################
+# Java
+############################
+*.class
+*.log
+
+############################
+# IntelliJ / JetBrains
+############################
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IntelliJ project-specific files
+out/
+# SonarLint
+.sonarlint/
+
+############################
+# VS Code (if ever used)
+############################
+.vscode/
+
+############################
+# macOS system files
+############################
+.DS_Store
+.AppleDouble
+.LSOverride
+
+############################
+# Cucumber Reports
+############################
+cucumber-report/
+reports/
+test-output/
+target/
+
+############################
+# Logs
+############################
+*.log
+logs/
+
+############################
+# Temporary Files
+############################
+*.tmp
+*.temp
+~$*
