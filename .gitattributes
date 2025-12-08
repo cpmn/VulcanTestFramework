@@ -1,0 +1,35 @@
+#
+# https://help.github.com/articles/dealing-with-line-endings/
+#
+# Linux start script should use lf
+/gradlew        text eol=lf
+
+# These are Windows script files and should use crlf
+*.bat           text eol=crlf
+
+# Normalize line endings for cross-platform compatibility
+* text=auto eol=lf
+
+# Treat these as text files
+*.java text
+*.feature text
+*.md text
+*.properties text
+*.xml text
+*.yml text
+*.yaml text
+*.json text
+
+# Mark binary files to avoid diff noise
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary
+
+# Ensure feature files are UTF-8 encoded
+*.feature linguist-language=Cucumber
+
+# Keep shell scripts executable
+*.sh text eol=lf
