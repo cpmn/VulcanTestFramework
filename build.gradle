@@ -39,6 +39,9 @@ dependencies {
 test {
     useJUnit()
 
+    failOnNoDiscoveredTests = false
+
+    // Allow Gradle to succeed even if no tests are found
     // Show test results clearly in console
     testLogging {
         events "PASSED", "FAILED", "SKIPPED"
