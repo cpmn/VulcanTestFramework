@@ -46,7 +46,7 @@
 *.gif       binary
 *.bmp       binary
 *.ico       binary
-*.svg       text  # SVG is XML-based text, keep as text
+*.svg       text
 
 # Fonts
 *.ttf       binary
