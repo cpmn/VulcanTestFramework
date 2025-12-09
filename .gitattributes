@@ -1,35 +1,122 @@
-#
-# https://help.github.com/articles/dealing-with-line-endings/
-#
-# Linux start script should use lf
-/gradlew        text eol=lf
+###############################################################################
+# Core line ending & text handling
+###############################################################################
 
-# These are Windows script files and should use crlf
-*.bat           text eol=crlf
-
-# Normalize line endings for cross-platform compatibility
+# Normalize all text files to LF in the repo, convert to native on checkout
 * text=auto eol=lf
 
-# Treat these as text files
-*.java text
-*.feature text
-*.md text
+# Explicitly mark common text file types
+*.java      text
+*.kt        text
+*.groovy    text
+*.xml       text
+*.gradle    text
 *.properties text
-*.xml text
-*.yml text
-*.yaml text
-*.json text
+*.md        text
+*.txt       text
+*.csv       text
+*.json      text
+*.yml       text
+*.yaml      text
+*.html      text
+*.css       text
+*.js        text
+*.ts        text
+*.sh        text eol=lf
+*.bat       text
 
-# Mark binary files to avoid diff noise
-*.jar binary
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.zip binary
+###############################################################################
+# Cucumber & Testing
+###############################################################################
 
-# Ensure feature files are UTF-8 encoded
-*.feature linguist-language=Cucumber
+# Treat Cucumber feature files as text and mark their language for GitHub
+*.feature   text linguist-language=Cucumber
 
-# Keep shell scripts executable
-*.sh text eol=lf
+# Treat Gherkin-like specification files as text
+*.story     text
+
+###############################################################################
+# Binary files (no diffs, no merges)
+###############################################################################
+
+# Images
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.bmp       binary
+*.ico       binary
+*.svg       text
+
+# Fonts
+*.ttf       binary
+*.otf       binary
+*.woff      binary
+*.woff2     binary
+
+# Archives and bundles
+*.zip       binary
+*.tar       binary
+*.gz        binary
+*.7z        binary
+*.jar       binary
+*.war       binary
+*.ear       binary
+
+# Executables
+*.exe       binary
+*.dll       binary
+*.so        binary
+*.dylib     binary
+
+###############################################################################
+# Git Large File Storage (LFS) — OPTIONAL
+# Uncomment if you decide to use Git LFS for large assets
+###############################################################################
+# *.zip      filter=lfs diff=lfs merge=lfs -text
+# *.jar      filter=lfs diff=lfs merge=lfs -text
+# *.png      filter=lfs diff=lfs merge=lfs -text
+# *.jpg      filter=lfs diff=lfs merge=lfs -text
+
+###############################################################################
+# Documentation & Markup
+###############################################################################
+
+# Improve language detection for GitHub linguist (optional tuning)
+*.md        linguist-language=Markdown
+*.adoc      text linguist-language=AsciiDoc
+
+###############################################################################
+# IDE / Tooling specific behaviour (usually combined with .gitignore)
+###############################################################################
+
+# IntelliJ IDEA project files are text (if ever committed)
+*.iml       text
+*.ipr       text
+*.iws       text
+
+# VS Code settings
+*.code-workspace text
+
+###############################################################################
+# Scripts & CI
+###############################################################################
+
+# Shell scripts should always use LF and be treated as text
+*.sh        text eol=lf
+
+# PowerShell scripts
+*.ps1       text
+
+# GitHub Actions workflows (YAML)
+.github/**/*.yml   text
+.github/**/*.yaml  text
+
+###############################################################################
+# Misc / Safety
+###############################################################################
+
+# Make sure these stay as text for easier review
+*.log       text
+*.conf      text
+*.ini       text
