@@ -12,12 +12,16 @@
 
 package com.vulcan.framework.support;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-
 public class ConfigManager {
+    
+    private static final Logger logger = LogManager.getLogger(ConfigManager.class);
+
     private static ConfigManager instance;
     private final Properties properties = new Properties();
 
@@ -26,17 +30,23 @@ public class ConfigManager {
     }
     public static ConfigManager getInstance() {
         if (instance == null) {
+            logger.info("Creating ConfigManager instance");
             instance = new ConfigManager();
         }
         return instance;
     }
     private void loadProperties() {
+        logger.info("Loading configuration from config.properties"); 
+
         try (InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties")) {
             if (input == null) {
+                logger.error("config.properties file not found in resources directory");
                 throw new RuntimeException("config.properties file not found in resources directory.");
             }
             properties.load(input);
+            logger.info("Configuration loaded successfully");
         } catch (IOException ex) {
+            logger.error("Failed to load configuration file", ex);
             throw new RuntimeException("config.properties file not found in resources directory.");
         }
     }
@@ -44,9 +54,11 @@ public class ConfigManager {
         String value = properties.getProperty(key);
 
         if (value == null) {
+            logger.error("Property '{}' not found in config.properties", key);
             throw new RuntimeException("Property '" + key + "' not found in config.properties");
         }
 
+        logger.debug("Reading config property '{}' = '{}'", key, value);
         return value.trim();
     }
 }
