@@ -11,23 +11,33 @@
 
 package com.vulcan.framework.support;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver; 
 import org.openqa.selenium.firefox.FirefoxDriver;
 
 public class DriverFactory {
+
+    private static final Logger logger = LogManager.getLogger(DriverFactory.class);
+
     private static WebDriver driver;
 
     public static WebDriver getDriver() {
         if (driver == null) {
+            logger.info("WebDriver is null. Creating a new instance.");
             createDriver();
+        }else {
+            logger.debug("Reusing existing WebDriver instance.");
         }
         return driver;
     }
 
     private static void createDriver() {
         String browser = ConfigManager.getInstance().get("browser").toLowerCase();
+        logger.info("Creating WebDriver for browser: {}", browser);
+
         switch (browser) {
                 case "chrome":
                     WebDriverManager.chromedriver().setup();
@@ -38,14 +48,19 @@ public class DriverFactory {
                     driver = new FirefoxDriver();
                     break;
                 default:
+                    logger.error("Unsupported browser configured: {}", browser);
                     throw new RuntimeException("Unsupported browser: " + browser);
-        }       
+        }
+        logger.info("Maximizing browser window");       
         driver.manage().window().maximize();
     }
     public static void quitDriver() {
         if (driver != null) {
+            logger.info("Quitting WebDriver");
             driver.quit();
             driver = null;
+        }  else {
+            logger.debug("quitDriver() called but WebDriver is already null.");
         }
     }    
 }

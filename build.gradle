@@ -34,6 +34,10 @@ dependencies {
 
     // WebDriverManager (automatic driver downloads)
     testImplementation 'io.github.bonigarcia:webdrivermanager:5.7.0'
+
+    // Logging - Log4j2
+    testImplementation 'org.apache.logging.log4j:log4j-api:2.24.0'
+    testImplementation 'org.apache.logging.log4j:log4j-core:2.24.0'
 }
 
 test {
