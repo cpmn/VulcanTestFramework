@@ -71,7 +71,8 @@ VulcanTestFramework/
 
 | Component | Purpose |
 |----------|---------|
-| **Java 17** | Core language |
+| **Java 21** | Core language |
+| **Log4j2**| Centralized logging system |
 | **Selenium WebDriver 4** | UI automation |
 | **Cucumber JVM 7** | BDD framework |
 | **Gradle** | Build + dependency management |
