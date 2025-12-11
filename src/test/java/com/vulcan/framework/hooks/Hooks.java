@@ -11,8 +11,9 @@
 
 package com.vulcan.framework.hooks;
 
-import com.vulcan.framework.support.ConfigManager;
-import com.vulcan.framework.support.DriverFactory;
+import com.vulcan.framework.config.ConfigManager;
+import com.vulcan.framework.core.DriverFactory;
+
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import org.apache.logging.log4j.LogManager;

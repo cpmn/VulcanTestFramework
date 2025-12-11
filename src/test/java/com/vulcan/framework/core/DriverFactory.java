@@ -9,7 +9,7 @@
  * A QA Automation Project by Claudia Paola Muñoz (cpmn.tech)
  */
 
-package com.vulcan.framework.support;
+package com.vulcan.framework.core;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,6 +17,8 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver; 
 import org.openqa.selenium.firefox.FirefoxDriver;
+
+import com.vulcan.framework.config.ConfigManager;
 
 public class DriverFactory {
 

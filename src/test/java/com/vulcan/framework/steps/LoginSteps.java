@@ -18,7 +18,7 @@ import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 
-import com.vulcan.framework.support.DriverFactory;
+import com.vulcan.framework.core.DriverFactory;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
