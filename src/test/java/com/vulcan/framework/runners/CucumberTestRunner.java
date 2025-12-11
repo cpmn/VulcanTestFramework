@@ -19,7 +19,7 @@ import org.junit.runner.RunWith;
 @CucumberOptions(
     features = "src/test/resources/features",
     glue = {
-            "com.vulcan.framework.steps", 
+            "com.vulcan.framework.steps.ui", 
             "com.vulcan.framework.hooks"
         },
     plugin = {
