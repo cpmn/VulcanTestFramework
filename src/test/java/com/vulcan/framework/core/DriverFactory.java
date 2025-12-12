@@ -17,14 +17,15 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver; 
 import org.openqa.selenium.firefox.FirefoxDriver;
-
+import org.openqa.selenium.support.ui.WebDriverWait;
 import com.vulcan.framework.config.ConfigManager;
+import java.time.Duration;
 
 public class DriverFactory {
 
     private static final Logger logger = LogManager.getLogger(DriverFactory.class);
-
     private static WebDriver driver;
+    private static WebDriverWait wait;
 
     public static WebDriver getDriver() {
         if (driver == null) {
@@ -37,7 +38,9 @@ public class DriverFactory {
     }
 
     private static void createDriver() {
-        String browser = ConfigManager.getInstance().get("browser").toLowerCase();
+        String browser = ConfigManager.getInstance().get("ui.browser").toLowerCase();
+        int implicitWait = Integer.parseInt(ConfigManager.getInstance().get("ui.implicitWait"));
+
         logger.info("Creating WebDriver for browser: {}", browser);
 
         switch (browser) {
@@ -53,6 +56,10 @@ public class DriverFactory {
                     logger.error("Unsupported browser configured: {}", browser);
                     throw new RuntimeException("Unsupported browser: " + browser);
         }
+
+        logger.info("Setting implicit wait to {} seconds", implicitWait);
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(implicitWait));
+
         logger.info("Maximizing browser window");       
         driver.manage().window().maximize();
     }

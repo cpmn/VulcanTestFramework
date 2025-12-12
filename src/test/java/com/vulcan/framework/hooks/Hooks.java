@@ -33,7 +33,7 @@ public class Hooks {
         WebDriver driver = DriverFactory.getDriver();
 
         // Read the base URL from config.properties
-        String baseUrl = ConfigManager.getInstance().get("baseUrl");
+        String baseUrl = ConfigManager.getInstance().get("ui.baseUrl");
 
         // Navigate to the base URL
         logger.info("Navigating to baseUrl: {}", baseUrl);
