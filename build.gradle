@@ -43,12 +43,27 @@ dependencies {
 test {
     useJUnit()
 
+    // Allow Gradle to succeed even if no tests are found   
     failOnNoDiscoveredTests = false
-
-    // Allow Gradle to succeed even if no tests are found
+    
+    // Map all UI + API keys from gradle.properties into System properties
+    [
+        'ui.baseUrl',
+        'ui.browser',
+        'ui.implicitWait',
+        'api.baseUrl',
+        'api.timeout',
+        'env'
+    ].each { key ->
+        if (project.hasProperty(key)) {
+            systemProperty key, project.property(key)
+        }
+    }
+    
     // Show test results clearly in console
     testLogging {
         events "PASSED", "FAILED", "SKIPPED"
+        showStandardStreams = true
     }
 
     // Allow filtering test execution by Cucumber tags (optional)

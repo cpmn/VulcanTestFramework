@@ -1,72 +1,37 @@
 <!--
-
 VulcanTestFramework
 A QA Automation Project by Claudia Paola Muñoz (cpmn.tech)
-
 Copyright (c) 2025
 MIT License
-  
 -->
 
 # 🖖 VulcanTestFramework  
-**A logical, scalable, and modular UI Automation Framework built with Java, Selenium WebDriver, Cucumber (BDD), and Gradle.**
+**A logical, scalable, and modular UI + API Automation Framework built with Java 21, Selenium WebDriver, Cucumber (BDD), RestAssured, and Gradle.**
 
-> *“Logic is the cement of our civilization.” — Spock*  
+> *“Logic is the beginning of wisdom, not the end.” — Spock*  
 Inspired by Vulcan principles of clarity, precision, and efficiency.
 
 ---
 
 ## 🌌 Overview
 
-**VulcanTestFramework** is a fully modular and extensible UI automation framework designed to demonstrate industry-level engineering practices.  
-It provides a clean architecture following Page Object Model (POM), Behavior-Driven Development (BDD), and configurable execution through Gradle.
+**VulcanTestFramework** is a professional-grade automation framework designed for **UI and API testing** under a unified architecture.  
+It implements industry best practices: Page Object Model (POM), BDD, layered architecture, design patterns, externalized configuration, and centralized logging.
 
-This project serves as a **professional starter-kit**, ideal for QA automation portfolios, learning, and real-world applications.
+This project serves as a **portfolio-quality reference**, an educational template, and a foundation suitable for real-world automation teams.
 
 ---
 
 ## 🎯 Project Goals
 
-- Build a **clean, reusable, and scalable** automation framework.  
-- Demonstrate **best practices** in Selenium + Java + Cucumber architecture.  
-- Enable configuration per environment and per browser.  
-- Provide rich reporting and CI/CD integration.  
-- Document every component with clarity and logic (the Vulcan way).
+- Build a **clean, extensible, and scalable** automation framework.  
+- Provide **UI + API test automation** in one architecture.  
+- Support **environment configuration** via Gradle properties.  
+- Integrate **Log4j2** for structured logging.  
+- Promote **separation of concerns** for maintainable architecture.  
+- Prepare the framework for CI/CD, parallel execution, and reporting.
 
 ---
-
-
-## 🧩 Architecture Structure
-```bash
-VulcanTestFramework/
-├─ build.gradle
-├─ settings.gradle
-├─ README.md
-├─ /src
-│  ├─ /test
-│  │  ├─ /java
-│  │  │  └─ com.vulcan.framework
-│  │  │     ├─ hooks
-│  │  │     ├─ steps
-│  │  │     ├─ runners
-│  │  │     ├─ support
-│  │  │     │  ├─ DriverFactory.java
-│  │  │     │  ├─ ConfigManager.java
-│  │  │     │  ├─ BasePage.java
-│  │  │     │  └─ utils
-│  │  └─ /resources
-│  │     ├─ features
-│  │     └─ config.properties
-```
-### **Core Design Principles**
-- **Logical simplicity**  
-- **Single Responsibility Architecture**  
-- **Reusability and extensibility**  
-- **External configuration**  
-- **Readable test definitions (BDD)**  
-
----
-
 ## 🚀 Tech Stack
 
 | Component | Purpose |
@@ -82,21 +47,206 @@ VulcanTestFramework/
 
 ---
 
+# 🧩 Architecture Structure
+
+```bash
+VulcanTestFramework/
+├── build.gradle
+├── settings.gradle
+├── gradle.properties
+├── README.md
+└── src/
+    └── test/
+        ├── java/
+        │   └── com/vulcan/framework/
+        │       ├── config/
+        │       │   └── ConfigManager.java
+        │       ├── core/
+        │       │   └── DriverFactory.java
+        │       ├── hooks/
+        │       │   └── Hooks.java
+        │       ├── ui/
+        │       │   ├── pages/
+        │       │   │   ├── BasePage.java
+        │       │   │   └── LoginPage.java
+        │       │   ├── actions/
+        │       │   └── assertions/
+        │       ├── api/
+        │       │   ├── client/
+        │       │   ├── models/
+        │       │   ├── requests/
+        │       │   └── assertions/
+        │       ├── steps/
+        │       │   ├── ui/
+        │       │   │   └── LoginSteps.java
+        │       │   └── api/
+        │       └── runners/
+        │           └── CucumberTestRunner.java
+        └── resources/
+            └── features/
+                └── login.feature
+```
+# ⭐ Core Architectural Principles
+
+The VulcanTestFramework is designed following strict engineering and software architecture standards to ensure clarity, maintainability, and scalability.
+
+**Separation of Concerns**  
+  Every layer has a single purpose:  
+  - UI pages only contain locators + actions  
+  - UI actions layer contains high-level flows  
+  - Step definitions contain only business logic  
+  - API clients handle requests  
+  - API assertions validate responses  
+  - Hooks manage browser lifecycle  
+  - Core layer handles infrastructure
+
+**⚙️ Configuration (gradle.properties)**  
+All configuration is handled through `gradle.properties`: 
+  ```properties
+    # UI settings
+    ui.baseUrl=https://www.saucedemo.com/
+    ui.browser=chrome
+    ui.implicitWait=5  
+    # API settings
+    api.baseUrl=https://api.example.com
+    api.timeout=5000
+
+    # Environment name
+    env=dev
+  ```
+Values are injected into the JVM by Gradle and accessed using:
+  ```java
+  ConfigManager.getInstance().get("ui.baseUrl");
+  ConfigManager.getInstance().get("api.baseUrl");
+  ```
+**🔧 Logging (Log4j2)**
+The framework uses Log4j2 for structured, timestamped logging. 
+
+Gradle configuration ensures logs appear in test output:
+  ```groovy
+  testLogging {
+    events "PASSED", "FAILED", "SKIPPED"
+    showStandardStreams = true
+  }
+  ```
+All layers produce structured logs for debugging and observability. Logs include activity from:
+- ConfigManager
+- DriverFactory
+- Hooks
+- UI Pages
+- API Clients
+
+Example output:
+```
+[INFO ] ConfigManager - Reading ui.browser=chrome
+[INFO ] DriverFactory - Creating WebDriver instance (chrome)
+[INFO ] Hooks - Navigating to baseUrl: https://www.saucedemo.com/
+[DEBUG] LoginPage - Checking if login form is visible
+```
+
+**Design Patterns**  
+  - *Singleton*: ConfigManager  
+  - *Factory*: DriverFactory  
+  - *Page Object Pattern*: UI Pages  
+  - *Facade / Actions Layer*: UI flows  
+  - *API Client Pattern*: REST client abstractions  
+  - *Separation of Assertions*: UI + API assertion modules
+
+## 🧠 UI Architecture (Page Object Model)
+
+**BasePage**
+Shared UI behavior for all pages:
+- WebDriver access
+- PageFactory initialization
+- Helper methods (click, type, isDisplayed)
+- Logging included
+
+**Page Objects (ui/pages/)**
+Example: LoginPage
+- Contains locators (@FindBy)
+- Contains UI interaction logic
+- Supports domain flows like loginAs(user, password)
+
+**UI Steps (steps/ui/)**
+- Cucumber BDD steps
+- Step files act only as “scenario translators” and never contain Selenium or RestAssured logic.
+- Call into LoginPage (never WebDriver directly)
+
+## 🛰 API Architecture (Skeleton Ready)
+The framework supports API testing using RestAssured, following the same clean structure as UI.
+
+✔ api/client/BaseApiClient
+- Reads api.baseUrl and api.timeout
+- Configures RestAssured
+- Defines helper methods (get, post, etc.)
+
+✔ Domain clients (e.g., UserApiClient)
+- Implements endpoint-specific operations
+```code
+getUserById(id)
+createUser(payload)
+```
+✔ DTO models (api/models)
+- Represent JSON response bodies
+- Handled via Jackson
+
+✔ API assertions (api/assertions)
+
+Reusable checks for:
+- Status codes
+- Field equality
+- JSON structure
+
+✔ API stepdefs (steps/api)
+
+Cucumber steps that interact with API clients.
+
+
+
+
+
+- **Environment-Aware Execution**  
+ Any value (UI base URL, API endpoint, browser type, wait times) can be overridden via:  
+```bash
+  ./gradlew test -Pui.browser=firefox -Penv=qa
+```
+
+
+# 🖖 VulcanTestFramework  
+### © 2025 cpmn.tech — MIT License
+
+
+
+
+
+
+
+
 ## 🧪 Running Tests
 
-### **Run all tests**
+### **Run the full test suite**
 ```bash
 ./gradlew test
 ```
-
+### **Override browser**
+```bash
+./gradlew test -Pui.browser=firefox
+```
+### **Override UI Base URL**
+```bash
+./gradlew test -Pui.baseUrl=https://staging.example.com
+```
 ### **Run tests with tags**
 ```bash
 ./gradlew test -Dcucumber.filter.tags="@smoke"
 ```
-
-### **Override browser**
+### **Override environment**
+Future environments:
+    - config-dev.properties
+	- config-qa.properties
+	- config-prod.properties
 ```bash
-./gradlew test -Dbrowser=firefox
+./gradlew test -Penv=qa
 ```
 
 ### **Configuration**
@@ -106,40 +256,34 @@ baseUrl=https://www.tobedefined.com
 browser=chrome
 implicitWait=10
 ```
-Future environments:
-    - config-dev.properties
-	- config-qa.properties
-	- config-prod.properties
 
-Override from CLI:
-```bash
-./gradlew test -Denv=qa
-```
+
 ## 🧠 Design Decisions (The Vulcan Logic)
-    - Use Page Object Model for maintainability
-	- Use ThreadLocal WebDriver to support parallel execution
-	- Separate test logic from UI interaction
-	- Use external configuration for flexibility
-	- Use hooks to orchestrate browser lifecycle
-	- Keep code minimal, clear, and predictable
+- Use Singleton for configuration
+- Use Factory for WebDriver creation
+- Use Page Object Model for maintainability
+- Use thin step definitions for readability
+- Use hooks for browser lifecycle orchestration
+- Use external Gradle-based configuration
+- Use consistent logging across layers
+- Use clean architecture for UI + API extensibilit
 ---
 
 ## 📈 CI/CD Integration (Coming Soon)
-
-    GitHub Actions workflow will include:
-	- Java + Gradle setup
-	- Test execution
-	- Report publishing
-	- Build badge in README
+- GitHub Actions workflow will include:
+- Java + Gradle setup
+- UI + API test execution
+- Publishing test reports
+- Build badge in README
 ---
 
 ## 📝 Contributing
-    
-    Even as a personal project, standards are followed:
-    - Feature branches
-	- Meaningful commit messages
-	- PR-style development
-	- Code kept modular and documented
+Even as a personal project, professional practices are followed:
+Feature branches
+- Meaningful commit messages
+- Modular code
+- Clear documentation
+- Consistent naming conventions    
 
 # 🖖 VulcanTestFramework  
 ### © 2025 cpmn.tech — MIT License
