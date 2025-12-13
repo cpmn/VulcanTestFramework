@@ -44,33 +44,95 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
     
 }
-
-test {
-    useJUnit()
-
-    // Allow Gradle to succeed even if no tests are found   
-    failOnNoDiscoveredTests = false
-    
-    // Map all UI + API keys from gradle.properties into System properties
-    [
-        'ui.baseUrl',
-        'ui.browser',
-        'ui.implicitWait',
-        'api.baseUrl',
-        'api.timeout',
-        'env'
-    ].each { key ->
-        if (project.hasProperty(key)) {
-            systemProperty key, project.property(key)
+ 
+def applyFrameworkSystemProps = {
+    Test t ->
+        // Map all UI + API keys from gradle.properties into System properties
+        [
+            'ui.baseUrl',
+            'ui.browser',
+            'ui.implicitWait',
+            'api.baseUrl',
+            'api.timeout',
+            'env'
+        ].each { key ->
+            if (project.hasProperty(key)) {
+                t.systemProperty key, project.property(key)
+            }
         }
-    }
-    
-    // Show test results clearly in console
-    testLogging {
-        events "PASSED", "FAILED", "SKIPPED"
-        showStandardStreams = true
+        // Show test results clearly in console
+        t.testLogging {
+            events "PASSED", "FAILED", "SKIPPED"
+            showStandardStreams = true
+        }
+
+        t.useJUnit()
+        // Allow Gradle to succeed even if no tests are found   
+        t.failOnNoDiscoveredTests = false
+
+        // Forward cucumber tag filter from Gradle JVM -> Test JVM (so -D works)
+        def tags = System.getProperty("cucumber.filter.tags")
+        if (tags != null) {
+            t.systemProperty("cucumber.filter.tags", tags)
+        }
+}
+
+tasks.register('apiTest', Test) { Test t ->
+    group = "verification"
+    description = "Runs API Cucumber features only (features/api)."
+    applyFrameworkSystemProps(t)
+
+    // Ensure tests are compiled first
+    t.dependsOn(tasks.named("testClasses"))
+
+    // Make sure this task uses the test output + runtime classpath
+    t.testClassesDirs = sourceSets.test.output.classesDirs
+    t.classpath = sourceSets.test.runtimeClasspath
+
+    // Run ONLY the runner class
+    t.filter {
+        includeTestsMatching("com.vulcan.framework.runners.CucumberTestRunner")
     }
 
-    // Allow filtering test execution by Cucumber tags (optional)
-    systemProperty "cucumber.filter.tags", System.getProperty("cucumber.filter.tags")
+    // Folder-based execution (NO tags required)
+    t.systemProperty "cucumber.features", "src/test/resources/features/api"
+}
+
+tasks.register('uiTest', Test) { Test t ->
+    group = "verification"
+    description = "Runs UI Cucumber features only (features/ui)."
+    applyFrameworkSystemProps(t)
+
+    // Ensure tests are compiled first
+    t.dependsOn(tasks.named("testClasses"))
+
+    // Make sure this task uses the test output + runtime classpath
+    t.testClassesDirs = sourceSets.test.output.classesDirs
+    t.classpath = sourceSets.test.runtimeClasspath
+
+    // Run ONLY the runner class
+    t.filter {
+        includeTestsMatching("com.vulcan.framework.runners.CucumberTestRunner")
+    }
+
+    // Folder-based execution (NO tags required)
+    t.systemProperty "cucumber.features", "src/test/resources/features/ui"
+}
+
+
+tasks.register("allTests") {
+    group = "verification"
+    description = "Runs UI + API test suites."
+    dependsOn("uiTest", "apiTest")
+}
+
+tasks.named('test', Test) { Test t ->
+
+    // Ensure gradle.properties keys are available via System.getProperty(...)
+    applyFrameworkSystemProps(t)
+    // Default: discover all features (UI + API)
+    t.systemProperty "cucumber.features", "src/test/resources/features"
+
+    // Allow tag filtering from CLI
+    // Example: -Dcucumber.filter.tags="@api"
 }
