@@ -90,7 +90,7 @@ VulcanTestFramework/
 
 The VulcanTestFramework is designed following strict engineering and software architecture standards to ensure clarity, maintainability, and scalability.
 
-**Separation of Concerns**  
+## **Separation of Concerns**  
   Every layer has a single purpose:  
   - UI pages only contain locators + actions  
   - UI actions layer contains high-level flows  
@@ -100,7 +100,7 @@ The VulcanTestFramework is designed following strict engineering and software ar
   - Hooks manage browser lifecycle  
   - Core layer handles infrastructure
 
-**⚙️ Configuration (gradle.properties)**  
+## **⚙️ Configuration (gradle.properties)**  
 All configuration is handled through `gradle.properties`: 
   ```properties
     # UI settings
@@ -119,7 +119,7 @@ Values are injected into the JVM by Gradle and accessed using:
   ConfigManager.getInstance().get("ui.baseUrl");
   ConfigManager.getInstance().get("api.baseUrl");
   ```
-**🔧 Logging (Log4j2)**
+## **🔧 Logging (Log4j2)**
 The framework uses Log4j2 for structured, timestamped logging. 
 
 Gradle configuration ensures logs appear in test output:
@@ -144,7 +144,7 @@ Example output:
 [DEBUG] LoginPage - Checking if login form is visible
 ```
 
-**Design Patterns**  
+## **Design Patterns**  
   - *Singleton*: ConfigManager  
   - *Factory*: DriverFactory  
   - *Page Object Pattern*: UI Pages  
@@ -154,20 +154,20 @@ Example output:
 
 ## 🧠 UI Architecture (Page Object Model)
 
-**BasePage**
+### **BasePage**
 Shared UI behavior for all pages:
 - WebDriver access
 - PageFactory initialization
 - Helper methods (click, type, isDisplayed)
 - Logging included
 
-**Page Objects (ui/pages/)**
+### **Page Objects (ui/pages/)**
 Example: LoginPage
 - Contains locators (@FindBy)
 - Contains UI interaction logic
 - Supports domain flows like loginAs(user, password)
 
-**UI Steps (steps/ui/)**
+### **UI Steps (steps/ui/)**
 - Cucumber BDD steps
 - Step files act only as “scenario translators” and never contain Selenium or RestAssured logic.
 - Call into LoginPage (never WebDriver directly)
@@ -201,28 +201,7 @@ Reusable checks for:
 
 Cucumber steps that interact with API clients.
 
-
-
-
-
-- **Environment-Aware Execution**  
- Any value (UI base URL, API endpoint, browser type, wait times) can be overridden via:  
-```bash
-  ./gradlew test -Pui.browser=firefox -Penv=qa
-```
-
-
-# 🖖 VulcanTestFramework  
-### © 2025 cpmn.tech — MIT License
-
-
-
-
-
-
-
-
-## 🧪 Running Tests
+# 🧪 Running Tests
 
 ### **Run the full test suite**
 ```bash
@@ -242,9 +221,9 @@ Cucumber steps that interact with API clients.
 ```
 ### **Override environment**
 Future environments:
-    - config-dev.properties
-	- config-qa.properties
-	- config-prod.properties
+- config-dev.properties
+- config-qa.properties
+- config-prod.properties
 ```bash
 ./gradlew test -Penv=qa
 ```
@@ -258,7 +237,7 @@ implicitWait=10
 ```
 
 
-## 🧠 Design Decisions (The Vulcan Logic)
+# 🧠 Design Decisions (The Vulcan Logic)
 - Use Singleton for configuration
 - Use Factory for WebDriver creation
 - Use Page Object Model for maintainability
@@ -269,7 +248,7 @@ implicitWait=10
 - Use clean architecture for UI + API extensibilit
 ---
 
-## 📈 CI/CD Integration (Coming Soon)
+# 📈 CI/CD Integration (Coming Soon)
 - GitHub Actions workflow will include:
 - Java + Gradle setup
 - UI + API test execution
@@ -277,7 +256,7 @@ implicitWait=10
 - Build badge in README
 ---
 
-## 📝 Contributing
+# 📝 Contributing
 Even as a personal project, professional practices are followed:
 Feature branches
 - Meaningful commit messages

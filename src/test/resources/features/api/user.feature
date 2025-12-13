@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2025 cpmn.tech
 #
 # Licensed under the MIT License.
@@ -9,14 +8,10 @@
 # A QA Automation Project by Claudia Paola Muñoz (cpmn.tech)
 #
 
-# Base URL of the application under test
-baseUrl=https://www.saucedemo.com/
+Feature: User API
 
-# Browser to use (we'll wire this later in DriverFactory)
-browser=chrome
-
-# Implicit wait in seconds (if you decide to use it)
-implicitWait=5
-
-# Example: environment name
-env=dev
+  @api @smoke
+  Scenario: Get user by id
+    When I request the user with id "1"
+    Then the API response status should be 200
+    And the API response field "id" should be 1

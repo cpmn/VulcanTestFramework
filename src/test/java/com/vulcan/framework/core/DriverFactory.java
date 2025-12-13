@@ -71,5 +71,8 @@ public class DriverFactory {
         }  else {
             logger.debug("quitDriver() called but WebDriver is already null.");
         }
+    }
+    public static boolean isDriverInitialized() {
+        return driver != null;
     }    
 }
