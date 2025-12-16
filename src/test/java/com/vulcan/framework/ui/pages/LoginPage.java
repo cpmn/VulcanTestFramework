@@ -44,7 +44,7 @@ public class LoginPage extends BasePage {
         click(loginButton);
     }
 
-    public boolean isLoginFormDisplayed() {
+    public boolean isLoginFormVisible() {
         logger.info("Checking if login form is visible");
         return isDisplayed(usernameField) && isDisplayed(passwordField) && isDisplayed(loginButton);
     }
