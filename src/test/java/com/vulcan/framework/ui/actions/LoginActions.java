@@ -20,8 +20,8 @@ public class LoginActions {
     private static final Logger logger = LogManager.getLogger(LoginActions.class);
     private final LoginPage loginPage;
 
-    public LoginActions() {
-        this.loginPage = new LoginPage();
+    public LoginActions(LoginPage loginPage) {
+        this.loginPage = loginPage;
     }
 
     /**

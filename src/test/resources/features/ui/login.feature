@@ -16,16 +16,19 @@ Feature: Login
    So that I can start a session
 
    @smoke @Login
-   Scenario: Open login page
+   Scenario: Open login page as Administrator
       Given I am on the login page
-      Then I should see the login form
+      And I should see the login form
+      Then I log in as role "ADMINISTRATOR"
    
    @smoke @Login
-   Scenario: Open login page as a second attempt
+   Scenario: Open login page as a Performance user
       Given I am on the login page
-      Then I should see the login form
+      And I should see the login form
+      Then I log in as role "PERFORMANCE"
 
    @smoke @Login
-   Scenario: Open login page as a third attempt
+   Scenario: Open login page as Standard user
       Given I am on the login page
-      Then I should see the login form
+      And I should see the login form
+      Then I log in as role "STANDARD"

@@ -22,7 +22,7 @@ import com.vulcan.framework.ui.pages.LoginPage;
 public class UiAssertions {
     private static final Logger logger = LogManager.getLogger(UiAssertions.class);
     
-    public static void assertLoginFromVisible(LoginPage loginPage) {
+    public static void assertLoginFormVisible(LoginPage loginPage) {
         logger.info("Asserting login form is visible");
         assertTrue("Login form should be visible", loginPage.isLoginFormVisible());
     }
