@@ -19,3 +19,13 @@ Feature: Login
    Scenario: Open login page
       Given I am on the login page
       Then I should see the login form
+   
+   @smoke @Login
+   Scenario: Open login page as a second attempt
+      Given I am on the login page
+      Then I should see the login form
+
+   @smoke @Login
+   Scenario: Open login page as a third attempt
+      Given I am on the login page
+      Then I should see the login form

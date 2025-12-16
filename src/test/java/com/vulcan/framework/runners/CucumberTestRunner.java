@@ -21,12 +21,7 @@ import org.junit.runner.RunWith;
         "com.vulcan.framework.steps.ui",
         "com.vulcan.framework.steps.api",
         "com.vulcan.framework.hooks"
-     },
-    plugin = {
-        "pretty",
-        "html:target/cucumber-reports.html",
-        "json:target/cucumber-reports.json"
-    },
+     },    
     monochrome = true
 )
 public class CucumberTestRunner {    
