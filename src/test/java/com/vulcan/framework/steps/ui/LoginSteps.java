@@ -11,38 +11,33 @@
 
 package com.vulcan.framework.steps.ui;
 
-import static org.junit.Assert.assertTrue;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.openqa.selenium.By;
-
+import com.vulcan.framework.ui.actions.LoginActions;
+import com.vulcan.framework.ui.assertions.UiAssertions;
 import com.vulcan.framework.ui.pages.LoginPage;
+import com.vulcan.framework.shared.auth.Credentials;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;    
 
 
-public class LoginSteps {
-    private static final Logger logger = LogManager.getLogger(LoginSteps.class);
-    private final LoginPage loginPage;
-
-    public LoginSteps() {
-        this.loginPage = new LoginPage();
-    }
+public class LoginSteps {    
+    private final LoginPage loginPage = new LoginPage();
+    private final LoginActions loginActions = new LoginActions(loginPage);
         
     @Given("I am on the login page")
     public void i_am_on_the_login_page() {
-        // The @before hook in DriverFactory already initializes the driver and navigate to the baseURL
-        logger.info("Verifying that we are on the login page");
-        String title = loginPage.getPageTitle();
-        logger.info("Current page title: {}", title);     
+        // Keep this minimal. Hooks already navigates to ui.baseUrl.
+        // Optionally later: loginPage.open();
     }
     @Then("I should see the login form")
     public void i_should_see_the_login_form() {
-        logger.info("Checking that the login form is displayed");
-        boolean visible = loginPage.isLoginFormDisplayed();
-        assertTrue("Expected login form to be visible", visible);
+        UiAssertions.assertLoginFormVisible(loginPage);
+    }
+    @When("I log in as role {string}")
+    public void i_log_in_as_role(String roleName) {
+        Credentials credentials = Credentials.byRole(roleName);
+        loginActions.login(credentials.username(), credentials.password());
     }
     
 }
