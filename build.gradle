@@ -44,39 +44,122 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
     
 }
- 
-def applyFrameworkSystemProps = {
-    Test t ->
-        // Map all UI + API keys from gradle.properties into System properties
-        [
-            'ui.baseUrl',
-            'ui.browser',
-            'ui.implicitWait',
-            'api.baseUrl',
-            'api.timeout',
-            'env'
-        ].each { key ->
-            if (project.hasProperty(key)) {
-                t.systemProperty key, project.property(key)
-            }
-        }
-        // Show test results clearly in console
-        t.testLogging {
-            events "PASSED", "FAILED", "SKIPPED"
-            showStandardStreams = true
-        }
 
-        t.useJUnit()
-        // Allow Gradle to succeed even if no tests are found   
-        t.failOnNoDiscoveredTests = false
-
-        // Forward cucumber tag filter from Gradle JVM -> Test JVM (so -D works)
-        def tags = System.getProperty("cucumber.filter.tags")
-        if (tags != null) {
-            t.systemProperty("cucumber.filter.tags", tags)
+/* =============== Helpers =============== */
+ /**
+ * Applies common framework-level system properties and test configuration
+ * to a Gradle Test task.
+ *
+ * Responsibilities:
+ * 1. Expose values from gradle.properties as JVM system properties
+ *    so they can be consumed by the framework (ConfigManager).
+ * 2. Forward Cucumber CLI filters (e.g. -Dcucumber.filter.tags)
+ *    from the Gradle daemon to the test JVM.
+ * 3. Configure consistent logging and execution behavior.
+ *
+ * This helper MUST be applied to all Test tasks (test, apiTest, uiTest)
+ * to guarantee deterministic behavior across environments and CI.
+ */
+def applyFrameworkSystemProps = { Test t ->
+    
+    /*
+     * Map framework configuration keys from gradle.properties
+     * into JVM system properties.
+     *
+     * Example:
+     *   gradle.properties → ui.baseUrl=https://example.com
+     *   JVM               → System.getProperty("ui.baseUrl")
+     */
+    [
+        'ui.baseUrl',
+        'ui.browser',
+        'ui.implicitWait',
+        'api.baseUrl',
+        'api.timeout',
+        'env'
+    ].each { key ->
+        if (project.hasProperty(key)) {
+            t.systemProperty key, project.property(key)
         }
+    }
+
+    /*
+     * Configure console output for test execution.
+     * This improves local debugging and CI logs.
+     */
+    t.testLogging {
+        events "PASSED", "FAILED", "SKIPPED"
+        showStandardStreams = true
+    }
+
+    /*
+     * Explicitly use JUnit (required by Cucumber-JUnit).
+     */
+    t.useJUnit()
+    
+    /*
+     * Allow Gradle to succeed even if no tests are discovered.
+     * This is important for folder-based execution
+     * (e.g. running apiTest when no API features exist yet).
+     */ 
+    t.failOnNoDiscoveredTests = false
+
+    /*
+     * Forward Cucumber tag filters provided via CLI:
+     *
+     *   ./gradlew test -Dcucumber.filter.tags="@api"
+     *
+     * Without this, Gradle would NOT pass the tag filter
+     * to the test JVM and Cucumber would execute all scenarios.
+     */
+    def tags = System.getProperty("cucumber.filter.tags")
+    if (tags != null) {
+        t.systemProperty("cucumber.filter.tags", tags)
+    }
 }
 
+/**
+ * Configures Cucumber reporting outputs for a specific test suite.
+ *
+ * Each Gradle Test task (apiTest, uiTest, test) calls this helper
+ * with a different suiteName to ensure reports are isolated and
+ * never overwrite each other.
+ *
+ * Output structure:
+ *   build/reports/cucumber/api/
+ *   build/reports/cucumber/ui/
+ *   build/reports/cucumber/all/
+ *
+ * Reports generated:
+ * - HTML  : human-readable report
+ * - JSON  : machine-readable (KPIs, trends, Allure integration)
+ * - JUnit : CI-friendly test result format
+ */
+def configureCucumberReporting = { Test t, String suiteName ->
+    /*
+     * Define a suite-specific report directory under build/.
+     */
+    def reportDir = file("$buildDir/reports/cucumber/${suiteName}")
+    reportDir.mkdirs()
+
+    /*
+     * Configure Cucumber plugins via JVM system properties.
+     *
+     * IMPORTANT:
+     * - Reporting configuration is intentionally NOT placed
+     *   in @CucumberOptions to keep the runner environment-agnostic.
+     * - Gradle controls execution concerns (reporting, filtering).
+     */
+    t.systemProperty("cucumber.plugin", String.join(",",
+        "pretty",
+        "html:${reportDir}/cucumber.html",
+        "json:${reportDir}/cucumber.json",
+        "junit:${reportDir}/cucumber.xml"
+    ))
+}
+
+
+/* ===== Tasks ===== */
 tasks.register('apiTest', Test) { Test t ->
     group = "verification"
     description = "Runs API Cucumber features only (features/api)."
@@ -135,4 +218,139 @@ tasks.named('test', Test) { Test t ->
 
     // Allow tag filtering from CLI
     // Example: -Dcucumber.filter.tags="@api"
+}
+/**
+ * Custom Gradle task to execute ONLY API Cucumber scenarios.
+ *
+ * Key responsibilities:
+ * - Execute API features located under src/test/resources/features/api
+ * - Reuse the shared Cucumber runner (no duplication of runners)
+ * - Apply framework-wide configuration (system properties, logging, tags)
+ * - Generate isolated API reports under build/reports/cucumber/api
+ *
+ * This task is designed to be:
+ * - Deterministic (folder-based execution, no tag dependency)
+ * - CI-friendly (clean separation from UI tests)
+ */
+tasks.register('apiTest', Test) { Test t ->
+
+    /*
+     * Assign the task to the "verification" group so it appears
+     * alongside other test-related Gradle tasks.
+     */
+    group = "verification"
+
+    /*
+     * Human-readable description shown in:
+     *   ./gradlew tasks
+     */
+    description = "Runs API Cucumber features only (features/api)."
+
+    /*
+     * Apply shared framework configuration:
+     * - Maps gradle.properties → JVM system properties
+     * - Forwards Cucumber tag filters (-Dcucumber.filter.tags)
+     * - Configures test logging and execution behavior
+     */
+    applyFrameworkSystemProps(t)
+
+    /*
+     * Ensure test classes are compiled before executing this task.
+     * This avoids NO-SOURCE issues when running custom Test tasks.
+     */
+    t.dependsOn(tasks.named("testClasses"))
+
+    /*
+     * Explicitly define where compiled test classes live
+     * and which runtime classpath should be used.
+     *
+     * Required for non-default Test tasks.
+     */
+    t.testClassesDirs = sourceSets.test.output.classesDirs
+    t.classpath = sourceSets.test.runtimeClasspath
+
+    /*
+     * Restrict execution to the single Cucumber JUnit runner.
+     * This prevents Gradle from trying to execute step definition
+     * classes or other test classes directly.
+     */
+    t.filter {
+        includeTestsMatching("com.vulcan.framework.runners.CucumberTestRunner")
+    }
+
+    /*
+     * Folder-based feature discovery:
+     * Only API feature files are loaded.
+     *
+     * This guarantees API-only execution without relying on tags.
+     */
+    t.systemProperty("cucumber.features", "src/test/resources/features/api")
+
+    /*
+     * Configure Cucumber reporting for the API suite.
+     * Outputs are written to:
+     *   build/reports/cucumber/api/
+     */
+    configureCucumberReporting(t, "api")
+}
+/**
+ * Custom Gradle task to execute ONLY UI Cucumber scenarios.
+ *
+ * Key responsibilities:
+ * - Execute UI features located under src/test/resources/features/ui
+ * - Initialize and teardown browser via Hooks
+ * - Apply shared framework configuration
+ * - Generate isolated UI reports under build/reports/cucumber/ui
+ *
+ * This task is designed for:
+ * - Local UI development
+ * - CI UI pipelines (headless execution)
+ * - Clear separation from API testing
+ */
+tasks.register('uiTest', Test) { Test t ->
+    group = "verification"
+    description = "Runs UI Cucumber features only (features/ui)."
+
+    /*
+     * Apply shared framework configuration:
+     * - gradle.properties → JVM system properties
+     * - Tag forwarding
+     * - Logging configuration
+     */
+    applyFrameworkSystemProps(t)
+
+    /*
+     * Ensure test classes are compiled before executing this task.
+     */
+    t.dependsOn(tasks.named("testClasses"))
+
+    /*
+     * Explicitly define test class output and runtime classpath.
+     * Required for custom Test tasks.
+     */
+    t.testClassesDirs = sourceSets.test.output.classesDirs
+    t.classpath = sourceSets.test.runtimeClasspath
+
+    /*
+     * Restrict execution to the Cucumber JUnit runner only.
+     */
+    t.filter {
+        includeTestsMatching("com.vulcan.framework.runners.CucumberTestRunner")
+    }
+
+    /*
+     * Folder-based feature discovery:
+     * Only UI feature files are loaded.
+     *
+     * Browser initialization is handled automatically
+     * by framework Hooks for UI scenarios.
+     */
+    t.systemProperty("cucumber.features", "src/test/resources/features/ui")
+
+    /*
+     * Configure Cucumber reporting for the UI suite.
+     * Outputs are written to:
+     *   build/reports/cucumber/ui/
+     */
+    configureCucumberReporting(t, "ui")
 }
