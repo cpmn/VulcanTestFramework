@@ -12,14 +12,14 @@
 package com.vulcan.framework.api.client;
 
 import io.restassured.response.Response;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class UserApiClient extends BaseApiClient {
 
-    private static final String USERS_ENDPOINT = "/users/";
+    private static final Logger logger = LogManager.getLogger(UserApiClient.class);
 
-    public UserApiClient() {
-        super();
-    }
+    private static final String USERS_ENDPOINT = "/users/";
 
     public Response getUserById(String userId) { 
         String path = USERS_ENDPOINT + userId; 
