@@ -160,48 +160,6 @@ def configureCucumberReporting = { Test t, String suiteName ->
 
 
 /* ===== Tasks ===== */
-tasks.register('apiTest', Test) { Test t ->
-    group = "verification"
-    description = "Runs API Cucumber features only (features/api)."
-    applyFrameworkSystemProps(t)
-
-    // Ensure tests are compiled first
-    t.dependsOn(tasks.named("testClasses"))
-
-    // Make sure this task uses the test output + runtime classpath
-    t.testClassesDirs = sourceSets.test.output.classesDirs
-    t.classpath = sourceSets.test.runtimeClasspath
-
-    // Run ONLY the runner class
-    t.filter {
-        includeTestsMatching("com.vulcan.framework.runners.CucumberTestRunner")
-    }
-
-    // Folder-based execution (NO tags required)
-    t.systemProperty "cucumber.features", "src/test/resources/features/api"
-}
-
-tasks.register('uiTest', Test) { Test t ->
-    group = "verification"
-    description = "Runs UI Cucumber features only (features/ui)."
-    applyFrameworkSystemProps(t)
-
-    // Ensure tests are compiled first
-    t.dependsOn(tasks.named("testClasses"))
-
-    // Make sure this task uses the test output + runtime classpath
-    t.testClassesDirs = sourceSets.test.output.classesDirs
-    t.classpath = sourceSets.test.runtimeClasspath
-
-    // Run ONLY the runner class
-    t.filter {
-        includeTestsMatching("com.vulcan.framework.runners.CucumberTestRunner")
-    }
-
-    // Folder-based execution (NO tags required)
-    t.systemProperty "cucumber.features", "src/test/resources/features/ui"
-}
-
 
 tasks.register("allTests") {
     group = "verification"
@@ -209,16 +167,70 @@ tasks.register("allTests") {
     dependsOn("uiTest", "apiTest")
 }
 
+/**
+ * Default Gradle test task to execute ALL Cucumber scenarios
+ * (both UI and API) in a single run.
+ *
+ * Key responsibilities:
+ * - Discover and execute all feature files under src/test/resources/features
+ * - Support CLI overrides for feature paths and tag filtering
+ * - Apply shared framework configuration consistently
+ * - Generate combined Cucumber reports under build/reports/cucumber/all
+ *
+ * This task is intended for:
+ * - Local full regression runs
+ * - Quick sanity checks
+ * - Scenarios where a single, combined report is sufficient
+ *
+ * NOTE:
+ * - UI vs API execution logic is still handled dynamically by Hooks
+ *   (API scenarios skip browser setup automatically).
+ * - For CI pipelines, apiTest and uiTest tasks are preferred.
+ */
 tasks.named('test', Test) { Test t ->
 
-    // Ensure gradle.properties keys are available via System.getProperty(...)
+    /*
+     * Apply shared framework configuration:
+     * - Maps gradle.properties values into JVM system properties
+     * - Forwards Cucumber tag filters (-Dcucumber.filter.tags)
+     * - Configures logging and execution behavior
+     */
     applyFrameworkSystemProps(t)
-    // Default: discover all features (UI + API)
-    t.systemProperty "cucumber.features", "src/test/resources/features"
 
-    // Allow tag filtering from CLI
-    // Example: -Dcucumber.filter.tags="@api"
+    /*
+     * Feature discovery strategy:
+     *
+     * 1. If the user provides a custom feature path via CLI:
+     *      -Dcucumber.features=src/test/resources/features/api/user.feature
+     *
+     *    → Only those features are executed.
+     *
+     * 2. Otherwise, default to discovering ALL features:
+     *      src/test/resources/features
+     *
+     * This provides maximum flexibility without requiring
+     * changes to the build script.
+     */
+    def featurePath = System.getProperty("cucumber.features")
+    t.systemProperty(
+        "cucumber.features",
+        featurePath ?: "src/test/resources/features"
+    )
+
+    /*
+     * Configure combined Cucumber reporting.
+     *
+     * Outputs are written to:
+     *   build/reports/cucumber/all/
+     *
+     * This includes:
+     * - cucumber.html  → human-readable report
+     * - cucumber.json  → machine-readable (KPIs, trends, CI)
+     * - cucumber.xml   → CI-friendly JUnit format
+     */
+    configureCucumberReporting(t, "all")
 }
+
 /**
  * Custom Gradle task to execute ONLY API Cucumber scenarios.
  *
