@@ -19,5 +19,5 @@ Feature: User API
   @api @smoke
   Scenario: Get user by id as second attempt
     When I request the user with id "1"
-    Then the API response status should be 400
+    Then the API response status should be 200
     And the API response field "id" should be 1

@@ -26,7 +26,8 @@ import com.vulcan.framework.config.ConfigManager;
 
 public abstract class BaseApiClient {
  
-    protected final Logger logger = LogManager.getLogger(getClass());
+    protected final Logger logger = LogManager.getLogger(BaseApiClient.class);
+    
     protected final String baseUrl;
     protected final int timeoutMs;
 
