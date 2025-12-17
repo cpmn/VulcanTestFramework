@@ -13,6 +13,7 @@ package com.vulcan.framework.hooks;
 
 import com.vulcan.framework.config.ConfigManager;
 import com.vulcan.framework.core.DriverFactory;
+import com.vulcan.framework.shared.context.ScenarioContext;
 
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
@@ -20,7 +21,7 @@ import io.cucumber.java.Scenario;
 
 import java.net.URI;
 import java.util.Collection;
-import java.util.Set;
+
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -56,13 +57,19 @@ public class Hooks {
     @After
     public void tearDown(Scenario scenario) {
         // Only quit browser if we started it for this scenario
-        if (Boolean.TRUE.equals(uiBrowserStarted.get()) && DriverFactory.isDriverInitialized()) {
-            logger.info("UI scenario finished. Quitting browser. Scenario='{}'", scenario.getName());
-            DriverFactory.quitDriver();
-        } else {
-            logger.info("No browser to quit for Scenario='{}'", scenario.getName());
+        try {
+            if (Boolean.TRUE.equals(uiBrowserStarted.get()) && DriverFactory.isDriverInitialized()) {
+                logger.info("UI scenario finished. Quitting browser. Scenario='{}'", scenario.getName());
+                DriverFactory.quitDriver();
+            } else {
+                logger.info("No browser to quit for Scenario='{}'", scenario.getName());
+            }
+        } finally {
+            
+            uiBrowserStarted.remove();
+            // Clear ScenarioContext to avoid data leakage between scenarios
+            ScenarioContext.clear();
         }
-        uiBrowserStarted.remove();
     }
 
     private boolean isApiScenario(Scenario scenario) {
