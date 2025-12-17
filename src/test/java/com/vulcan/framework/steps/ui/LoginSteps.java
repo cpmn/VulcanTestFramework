@@ -16,8 +16,8 @@ import com.vulcan.framework.ui.assertions.UiAssertions;
 import com.vulcan.framework.ui.pages.LoginPage;
 import com.vulcan.framework.shared.auth.Credentials;
 import com.vulcan.framework.shared.context.ScenarioContext;
+import com.vulcan.framework.shared.context.ScenarioKeys;
 
-import io.cucumber.java.Scenario;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;    
@@ -40,7 +40,7 @@ public class LoginSteps {
     public void i_log_in_as_role(String roleName) {
         Credentials credentials = Credentials.byRole(roleName);
         // Store for later steps (UI and/or API)
-        ScenarioContext.put("credentials", credentials);
+        ScenarioContext.put(ScenarioKeys.CREDENTIALS, credentials);
         loginActions.login(credentials.username(), credentials.password());
     }    
 }

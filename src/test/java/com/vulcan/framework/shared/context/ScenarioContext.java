@@ -66,5 +66,16 @@ public final class ScenarioContext {
         STORE.get().clear();
         STORE.remove();
     }
+
+    public static <T> T getOptional(String key, Class<T> type) {
+        Object value = STORE.get().get(key);
+        if (value == null) return null;
+        if (!type.isInstance(value)) {
+            throw new IllegalStateException(
+                "ScenarioContext key '" + key + "' is not of type " + type.getSimpleName()
+            );
+        }
+        return type.cast(value);
+    }
     
 }
