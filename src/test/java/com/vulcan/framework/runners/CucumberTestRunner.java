@@ -17,6 +17,7 @@ import org.junit.runner.RunWith;
 
 @RunWith(Cucumber.class)
 @CucumberOptions(
+    features = "classpath:features",
     glue = {
         "com.vulcan.framework.steps.ui",
         "com.vulcan.framework.steps.api",
