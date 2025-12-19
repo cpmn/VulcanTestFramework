@@ -12,14 +12,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * BaseApiClient provides:
- * - RestAssured global configuration (base URI + timeouts)
- * - Shared request builders (JSON by default, optional HTML)
- * - Convenience HTTP methods (GET)
+ * BaseApiClient provides a scenario-friendly API client foundation.
  *
- * Note:
- * - JSON headers are the default because most APIs return JSON.
- * - For HTML endpoints (ex: SauceDemo home page), use requestHtml().
+ * Key design decision:
+ * - Avoids setting global RestAssured.baseURI / RestAssured.config (shared JVM state).
+ * - Builds a per-instance (per-scenario) RequestSpecification instead.
+ *
+ * This is safer for:
+ * - per-scenario lifecycle
+ * - future parallel execution
+ * - switching env/baseUrl without bleeding across tests
  */
 public abstract class BaseApiClient {
 
@@ -32,64 +34,58 @@ public abstract class BaseApiClient {
     protected final String baseUrl;
     protected final int timeoutMs;
 
+    /** Base request spec reused for all calls made by this client instance. */
+    private final RequestSpecification baseRequest;
+
     protected BaseApiClient() {
         this.baseUrl = ConfigManager.getInstance().get("api.baseUrl");
         this.timeoutMs = Integer.parseInt(ConfigManager.getInstance().get("api.timeout"));
 
         logger.info("Initializing API client | baseUrl={} | timeoutMs={}", baseUrl, timeoutMs);
 
-        // Configure RestAssured globally for this JVM run.
-        RestAssured.baseURI = baseUrl;
-        RestAssured.config = RestAssuredConfig.config()
+        // Configure RestAssured timeouts
+        RestAssuredConfig config = RestAssuredConfig.config()
             .httpClient(HttpClientConfig.httpClientConfig()
                 .setParam("http.connection.timeout", timeoutMs)
                 .setParam("http.socket.timeout", timeoutMs)
                 .setParam("http.connection-manager.timeout", (long) timeoutMs));
+
+        // Build a per-instance base request specification.
+        // This avoids mutating RestAssured static globals.
+        this.baseRequest = RestAssured.given()
+            .baseUri(baseUrl)
+            .config(config);
     }
 
-    /**
-     * Default request for JSON APIs.
-     *
-     * Why:
-     * - Most services are JSON-based
-     * - Keeps your existing UserApiClient behavior unchanged
+   /**
+     * JSON request builder.
+     * Use for typical REST APIs that return JSON.
      */
     protected RequestSpecification requestJson() {
-        return RestAssured.given()
+        return baseRequest
             .header("Accept", "application/json")
             .header("Content-Type", "application/json");
     }
 
     /**
-     * Request builder for HTML endpoints (ex: SauceDemo landing page).
-     *
-     * Why:
-     * - Some endpoints return HTML (not JSON)
-     * - Allows health-check scenarios without fighting headers
-     *
-     * Note:
-     * - No Content-Type is needed for GET.
+     * HTML request builder.
+     * Useful for calling UI sites (like SauceDemo) as a basic health check.
      */
     protected RequestSpecification requestHtml() {
-        return RestAssured.given()
+        return baseRequest
             .header("Accept", "text/html");
     }
 
-    /**
-     * Default GET uses JSON request settings.
-     * This keeps your existing API tests stable.
-     */
+    /** Default GET for JSON APIs. */
     protected Response get(String path) {
         logger.info("GET (JSON) Request to endpoint: {}", path);
         return requestJson().when().get(path).thenReturn();
     }
 
-    /**
-     * GET for HTML endpoints.
-     * Use this for SauceDemo home page checks.
-     */
+    /** GET for HTML endpoints (SauceDemo). */
     protected Response getHtml(String path) {
         logger.info("GET (HTML) Request to endpoint: {}", path);
         return requestHtml().when().get(path).thenReturn();
     }
+    
 }

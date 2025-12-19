@@ -13,6 +13,7 @@ package com.vulcan.framework.hooks;
 
 import com.vulcan.framework.config.ConfigManager;
 import com.vulcan.framework.core.DriverFactory;
+import com.vulcan.framework.shared.context.ApiClientRegistry;
 import com.vulcan.framework.shared.context.DataRegistry;
 import com.vulcan.framework.shared.context.ScenarioContext;
 import com.vulcan.framework.shared.context.ScenarioKeys;
@@ -107,29 +108,81 @@ public class Hooks {
      */
     @After
     public void tearDown(Scenario scenario) {
-        
+
+        // Capture some info early (safe to use after cleanup)
+        final String scenarioName = scenario.getName();
+        final boolean uiStarted = Boolean.TRUE.equals(uiBrowserStarted.get());
+
+        Exception browserQuitError = null;
+        Exception dataCleanupError = null;
+        Exception apiRegistryClearError = null;
+
         try {
-
-            if (Boolean.TRUE.equals(uiBrowserStarted.get()) && DriverFactory.isDriverInitialized()) {
-                logger.info("UI scenario finished. Quitting browser. Scenario='{}'", scenario.getName());
-                DriverFactory.quitDriver();
-            } else {
-                logger.info("No browser to quit for Scenario='{}'", scenario.getName());
+            // 1) Quit browser (UI only)
+            try {
+                if (uiStarted && DriverFactory.isDriverInitialized()) {
+                    logger.info("UI scenario finished. Quitting browser. Scenario='{}'", scenarioName);
+                    DriverFactory.quitDriver();
+                } else {
+                    logger.info("No browser to quit for Scenario='{}'", scenarioName);
+                }
+            } catch (Exception e) {
+                browserQuitError = e;
+                logger.error("Browser teardown failed for Scenario='{}': {}", scenarioName, e.getMessage(), e);
             }
+
+            // 2) Run DataRegistry cleanup actions (API/UI/Hybrid)
+            try {
+                DataRegistry dataRegistry = ScenarioContext.getOptional(ScenarioKeys.DATA_REGISTRY, DataRegistry.class);
+                if (dataRegistry != null && !dataRegistry.isEmpty()) {
+                    logger.info("Running DataRegistry cleanup actions ({} action(s)) for Scenario='{}'",
+                        dataRegistry.size(), scenario.getName());
+                    dataRegistry.cleanupAll();
+                } else {
+                    logger.info("No DataRegistry cleanup actions for Scenario='{}'", scenarioName);
+                }
+            } catch (Exception e) {
+                dataCleanupError = e;
+                logger.error("DataRegistry cleanup failed for Scenario='{}': {}", scenarioName, e.getMessage(), e);
+            }
+
+            // 3) Clear ApiClientRegistry (per-scenario API clients)
+            try {
+                ApiClientRegistry registry = ScenarioContext.getOptional(
+                    ScenarioKeys.API_CLIENT_REGISTRY,
+                    ApiClientRegistry.class
+                );
+
+                if (registry != null) {
+                    logger.info("Clearing ApiClientRegistry ({} clients) for Scenario='{}'",
+                        registry.size(), scenarioName);
+                    registry.clear();
+                } else {
+                    logger.info("No ApiClientRegistry to clear for Scenario='{}'", scenarioName);
+                }
+            } catch (Exception e) {
+                apiRegistryClearError = e;
+                logger.error("ApiClientRegistry cleanup failed for Scenario='{}': {}", scenarioName, e.getMessage(), e);
+            }
+
         } finally {
-            // Run sceanario clean up actions(API/UI/Hibrid)
-            DataRegistry dataRegistry = ScenarioContext.getOptional(ScenarioKeys.DATA_REGISTRY, DataRegistry.class);
-            if (dataRegistry != null && !dataRegistry.isEmpty()) {
-                logger.info("Running DataRegistry cleanup actions for Scenario='{}'", scenario.getName());
-                dataRegistry.cleanupAll();
-            }
-
-            // Clear ThreadLocals to prevent state leakage between scenarios          
+            // 4) Always clear ThreadLocals + ScenarioContext to avoid leaks
             uiBrowserStarted.remove();
-            // Clear ScenarioContext to avoid data leakage between scenarios
             ScenarioContext.clear();
+
+            // 5) Summary (high-signal logging)
+            logger.info(
+                "Scenario teardown complete | name='{}' | uiStarted={} | status={} | browserQuitError={} | dataCleanupError={} | apiRegistryError={}",
+                scenarioName,
+                uiStarted,
+                scenario.getStatus(),
+                (browserQuitError != null),
+                (dataCleanupError != null),
+                (apiRegistryClearError != null)
+            );
         }
     }
+
 
     /**
      * Determines whether the current scenario should be treated as an API scenario.

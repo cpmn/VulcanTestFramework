@@ -118,4 +118,7 @@ public final class ScenarioKeys {
      * rather than relying solely on raw IDs.
      */
     public static final String CREATED_USER_ID = "createdUserId";
+
+    // API client lifecycle (per scenario)
+public static final String API_CLIENT_REGISTRY = "apiClientRegistry";
 }
