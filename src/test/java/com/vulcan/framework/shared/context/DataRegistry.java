@@ -15,72 +15,106 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Objects;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * DataRegistry collects cleanup actions for data created during a scenario.
  *
- * <p>Why this exists:</p>
- * <ul>
- *   <li>Guarantees test independence (each scenario owns its data).</li>
- *   <li>Automates teardown even when scenarios fail.</li>
- *   <li>Supports API, UI, and Hybrid scenarios.</li>
- * </ul>
- *
- * <p>Cleanup order:</p>
- * <ul>
- *   <li>Cleanup runs in LIFO order (reverse creation order).</li>
- *   <li>This helps when entities depend on each other (create user → create order).</li>
- * </ul>
- *
- * Typical usage:
- * <pre>{@code
- * DataRegistry registry = ScenarioContext.getOrCreate(
- *     ScenarioKeys.DATA_REGISTRY, DataRegistry.class, DataRegistry::new
- * );
- *
- * String userId = api.createUser(...);
- * registry.registerCleanup(() -> api.deleteUser(userId));
- * }</pre>
+ * Enhancements:
+ * - Supports named cleanup actions (e.g., "deleteUser:123")
+ * - Runs cleanup in LIFO order (reverse creation order)
+ * - Logs each cleanup action start/success/failure
  */
 public class DataRegistry {
 
-    /** Cleanup actions stack. Uses LIFO to delete dependencies safely. */
-    private final Deque<Runnable> cleanupActions = new ArrayDeque<>();
-    
-    /**
-     * Register a cleanup action to run after the scenario.
-     *
-     * @param cleanupAction action that deletes/undoes seeded test data
-     */
+    private static final Logger logger = LogManager.getLogger(DataRegistry.class);
 
+    /**
+     * A cleanup action with a human-readable name.
+     * Example: name="deleteUser:123"
+     */
+    private static final class NamedCleanupAction {
+        private final String name;
+        private final Runnable action;
+
+        private NamedCleanupAction(String name, Runnable action) {
+            this.name = Objects.requireNonNull(name, "name cannot be null").trim();
+            if (this.name.isEmpty()) {
+                throw new IllegalArgumentException("name cannot be blank");
+            }
+            this.action = Objects.requireNonNull(action, "action cannot be null");
+        }
+    }
+
+    /** Cleanup actions stack. Uses LIFO to delete dependencies safely. */
+    private final Deque<NamedCleanupAction> cleanupActions = new ArrayDeque<>();
+
+    /**
+     * Register a cleanup action using a descriptive name.
+     *
+     * Example:
+     * registry.registerCleanup("deleteUser:" + userId, () -> api.deleteUser(userId));
+     *
+     * @param name a human-readable action name
+     * @param cleanupAction code that deletes/undoes seeded test data
+     */
+    public void registerCleanup(String name, Runnable cleanupAction) {
+        cleanupActions.push(new NamedCleanupAction(name, cleanupAction));
+        logger.debug("Registered cleanup action '{}' | totalActions={}", name, cleanupActions.size());
+    }
+
+    /**
+     * Convenience overload when you don't care about naming.
+     * (Still logs something useful.)
+     */
     public void registerCleanup(Runnable cleanupAction) {
-        cleanupActions.push(Objects.requireNonNull(cleanupAction, "cleanupAction cannot be null"));
+        registerCleanup("cleanupAction#" + (cleanupActions.size() + 1), cleanupAction);
     }
 
     /**
      * Run all cleanup actions.
      *
-     * <p>Safety behavior:</p>
-     * <ul>
-     *   <li>If one cleanup fails, we log the error and continue with the next one.</li>
-     *   <li>This prevents partial cleanup from blocking remaining cleanup steps.</li>
-     * </ul>
+     * Safety behavior:
+     * - If one cleanup fails, we log and continue.
+     * - We do not rethrow exceptions; teardown is best-effort.
      */
     public void cleanupAll() {
+        int total = cleanupActions.size();
+        if (total == 0) {
+            logger.info("No cleanup actions to execute.");
+            return;
+        }
+
+        logger.info("Executing {} cleanup action(s) (LIFO order).", total);
+
+        int executed = 0;
+        int failed = 0;
+
         while (!cleanupActions.isEmpty()) {
-            Runnable action = cleanupActions.pop();
+            NamedCleanupAction next = cleanupActions.pop();
+
+            logger.info("Cleanup START | name='{}'", next.name);
             try {
-                action.run();
+                next.action.run();
+                executed++;
+                logger.info("Cleanup OK    | name='{}'", next.name);
             } catch (Exception e) {
-                // Log and continue with next cleanup action
-                System.err.println("[DataRegistry] Cleanup action failed: " + e.getMessage());
-                e.printStackTrace();
+                failed++;
+                logger.error("Cleanup FAIL  | name='{}' | error={}", next.name, e.getMessage(), e);
             }
         }
+
+        logger.info("Cleanup complete | total={} | executed={} | failed={}", total, executed, failed);
     }
 
     /** @return true if no cleanup actions are registered for this scenario */
-    public boolean isEmpty () {
+    public boolean isEmpty() {
         return cleanupActions.isEmpty();
     }
-        
+
+    /** @return how many cleanup actions are currently registered */
+    public int size() {
+        return cleanupActions.size();
+    }
 }
