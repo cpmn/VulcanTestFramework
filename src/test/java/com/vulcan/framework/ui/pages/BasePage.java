@@ -11,53 +11,100 @@
 
 package com.vulcan.framework.ui.pages;
 
+import com.vulcan.framework.config.ConfigManager;
 import com.vulcan.framework.core.DriverFactory;
+import com.vulcan.framework.core.WaitUtils;
+import com.vulcan.framework.ui.actions.ElementActions;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.PageFactory;
 
+/**
+ * BasePage is the parent class for all Page Objects.
+ *
+ * Responsibilities:
+ * - Obtain WebDriver from DriverFactory
+ * - Initialize @FindBy elements using PageFactory
+ * - Provide stable, logged UI interactions via ElementActions + explicit waits
+ *
+ * Notes:
+ * - We intentionally avoid Thread.sleep.
+ * - Passwords/secrets should be typed using typeSensitive().
+ */
 public abstract class BasePage {
+
     protected final WebDriver driver;
-    protected final Logger logger = LogManager.getLogger(BasePage.class);
+
+    /**
+     * Logger is created per actual page class (LoginPage, InventoryPage, etc.).
+     * This makes logs easier to read than always "BasePage".
+     */
+    protected final Logger logger = LogManager.getLogger(getClass());
+
+    /** Explicit wait utilities (visibility/clickable/title/url). */
+    protected final WaitUtils wait;
+
+    /** Centralized element interactions (click/type/getText/isDisplayed). */
+    protected final ElementActions actions;
 
     protected BasePage() {
-        // Get the shared WebDriver instance from DriverFactory
         this.driver = DriverFactory.getDriver();
-        // Initialize @FindBy elements in the child page classes
+
+        // Reuse your existing ui.implicitWait as a simple "explicit wait timeout" for now.
+        // Later you can introduce ui.explicitWait without touching pages.
+        int timeoutSeconds = Integer.parseInt(ConfigManager.getInstance().get("ui.implicitWait"));
+
+        this.wait = new WaitUtils(driver, timeoutSeconds);
+        this.actions = new ElementActions(wait);
+
         PageFactory.initElements(driver, this);
     }
 
-    protected void click(WebElement element) {
-        logger.info("Clicking on element: {}", describeElement(element));
-        element.click();
+    // ---------------------------
+    // Protected helper methods
+    // ---------------------------
+
+    /**
+     * Clicks an element with waiting + consistent logging.
+     *
+     * @param element element to click
+     * @param name friendly element name for logs
+     */
+    protected void click(WebElement element, String name) {
+        actions.click(element, name);
     }
 
-    protected void type(WebElement element, String text) {
-        logger.info("Typing text '{}' into element: {}", text, describeElement(element));
-        element.clear();
-        element.sendKeys(text);
+    /**
+     * Types into an element with waiting + consistent logging.
+     * Value is auto-masked if name looks sensitive (password/token/secret).
+     */
+    protected void type(WebElement element, String name, String text) {
+        actions.type(element, name, text);
     }
 
-    protected boolean isDisplayed(WebElement element) {
-       boolean visible = element.isDisplayed();
-       logger.info("Element {} is displayed: {}", describeElement(element), visible);
-       return visible;
+    /**
+     * Always masks the typed value in logs (recommended for password fields).
+     */
+    protected void typeSensitive(WebElement element, String name, String text) {
+        actions.typeSensitive(element, name, text);
     }
-    public String getPageTitle(){
+
+    /**
+     * Safe visibility check (returns false if element isn't present/displayed).
+     */
+    protected boolean isDisplayed(WebElement element, String name) {
+        return actions.isDisplayed(element, name);
+    }
+
+    /**
+     * Returns the current page title.
+     */
+    public String getPageTitle() {
         String title = driver.getTitle();
-        logger.info("Current page title: {}", title);
+        logger.info("UI INFO | pageTitle='{}'", title);
         return title;
     }
-
-    private String describeElement(WebElement element) {
-        // This will not be perfect, but is useful in logs
-        try {
-            return element.toString();
-        } catch (Exception e) {
-            return "WebElement";
-        }
-    }
-    
 }

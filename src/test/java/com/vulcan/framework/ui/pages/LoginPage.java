@@ -14,7 +14,15 @@ package com.vulcan.framework.ui.pages;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
 
+/**
+ * LoginPage represents the SauceDemo login screen.
+ *
+ * Rules:
+ * - Page methods are low-level actions on the page (enter/click/check).
+ * - High-level flows belong in LoginActions (e.g., login as role/user).
+ */
 public class LoginPage extends BasePage {
+
     @FindBy(id = "user-name")
     private WebElement usernameField;
 
@@ -30,30 +38,31 @@ public class LoginPage extends BasePage {
     }
 
     public void enterUsername(String username) {
-        logger.info("Entering username: {}", username);
-        type(usernameField, username);
+        type(usernameField, "usernameField", username);
     }
 
     public void enterPassword(String password) {
-        logger.info("Entering password");
-        type(passwordField, password);
+        // Never log raw passwords
+        typeSensitive(passwordField, "passwordField", password);
     }
 
     public void clickLogin() {
-        logger.info("Clicking login button");
-        click(loginButton);
+        click(loginButton, "loginButton");
     }
 
     public boolean isLoginFormVisible() {
-        logger.info("Checking if login form is visible");
-        return isDisplayed(usernameField) && isDisplayed(passwordField) && isDisplayed(loginButton);
+        return isDisplayed(usernameField, "usernameField")
+                && isDisplayed(passwordField, "passwordField")
+                && isDisplayed(loginButton, "loginButton");
     }
 
+    /**
+     * Low-level convenience method.
+     * (The recommended place for high-level flows is LoginActions.)
+     */
     public void loginAs(String username, String password) {
-        logger.info("Performing login as user: {}", username);
         enterUsername(username);
         enterPassword(password);
         clickLogin();
     }
-    
 }
