@@ -21,13 +21,13 @@ Feature: Login
       And I should see the login form
       Then I log in as role "ADMINISTRATOR"
    
-   @smoke @Login
+   @smoke
    Scenario: Open login page as a Performance user
       Given I am on the login page
       And I should see the login form
       Then I log in as role "PERFORMANCE"
 
-   @smoke @Login
+   @smoke
    Scenario: Open login page as Standard user
       Given I am on the login page
       And I should see the login form
