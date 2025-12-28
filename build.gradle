@@ -11,6 +11,7 @@
   
 plugins {
     id 'java'
+    id 'io.qameta.allure-report' version '3.0.1'
 }
 
 group = 'com.vulcan'
@@ -44,6 +45,9 @@ dependencies {
     // API Testing - RestAssured
     testImplementation 'io.rest-assured:rest-assured:5.5.0'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
+    //Allure - Cucumber 7 adapter
+    testImplementation 'io.qameta.allure:allure-cucumber7-jvm:2.32.0'
     
 }
 
@@ -156,7 +160,8 @@ def configureCucumberReporting = { Test t, String suiteName ->
         "pretty",
         "html:${reportDir}/cucumber.html",
         "json:${reportDir}/cucumber.json",
-        "junit:${reportDir}/cucumber.xml"
+        "junit:${reportDir}/cucumber.xml",
+        "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
     ))
 }
 
@@ -231,6 +236,7 @@ tasks.named('test', Test) { Test t ->
      * - cucumber.xml   → CI-friendly JUnit format
      */
     configureCucumberReporting(t, "all")
+    t.systemProperty("allure.results.directory", "$buildDir/allure-results/all")
 }
 
 /**
@@ -306,6 +312,7 @@ tasks.register('apiTest', Test) { Test t ->
      *   build/reports/cucumber/api/
      */
     configureCucumberReporting(t, "api")
+    t.systemProperty("allure.results.directory", "$buildDir/allure-results/api")
 }
 /**
  * Custom Gradle task to execute ONLY UI Cucumber scenarios.
@@ -367,4 +374,5 @@ tasks.register('uiTest', Test) { Test t ->
      *   build/reports/cucumber/ui/
      */
     configureCucumberReporting(t, "ui")
+    t.systemProperty("allure.results.directory", "$buildDir/allure-results/ui")
 }
