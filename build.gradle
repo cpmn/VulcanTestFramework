@@ -8,10 +8,11 @@
  * This file is part of the VulcanTestFramework project.
  * A QA Automation Project by Claudia Paola Muñoz (cpmn.tech)
  */
+
   
 plugins {
     id 'java'
-    id 'io.qameta.allure-report' version '3.0.1'
+    id 'io.qameta.allure' version '3.0.1'
 }
 
 group = 'com.vulcan'
@@ -20,7 +21,6 @@ version = '0.1.0-SNAPSHOT'
 repositories {
     mavenCentral()
 }
-
 
 dependencies {
     // Base test framework (JUnit 4)
@@ -47,9 +47,33 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 
     //Allure - Cucumber 7 adapter
-    testImplementation 'io.qameta.allure:allure-cucumber7-jvm:2.32.0'
+    testImplementation platform("io.qameta.allure:allure-bom:2.32.0")
+    testImplementation "io.qameta.allure:allure-cucumber7-jvm"
+    testImplementation "io.qameta.allure:allure-junit4"
     
 }
+
+import io.qameta.allure.gradle.report.tasks.AllureReport
+
+allure {
+    // Allure commandline version used by the report/serve tasks
+    version.set("2.32.0")
+
+    report {
+        // Where HTML report is generated (optional customization)
+        // reportDir.set(layout.buildDirectory.dir("reports/allure"))
+        // singleFile.set(true) // optional
+        dependsOnTests.set(false) // keep false; you already run apiTest/uiTest explicitly
+    }
+}
+
+// Allure report tasks are commonly not configuration-cache friendly
+import io.qameta.allure.gradle.report.tasks.AllureReport
+tasks.withType(AllureReport).configureEach {
+    notCompatibleWithConfigurationCache("Allure report task uses commandline executable resolution.")
+}
+
+
 
 /* =============== Helpers =============== */
  /**
@@ -141,29 +165,32 @@ def applyFrameworkSystemProps = { Test t ->
  * - JSON  : machine-readable (KPIs, trends, Allure integration)
  * - JUnit : CI-friendly test result format
  */
-def configureCucumberReporting = { Test t, String suiteName ->
-    /*
-     * Define a suite-specific report directory under build/.
-     */
-    def reportDir = file("$buildDir/reports/cucumber/${suiteName}")
-    reportDir.mkdirs()
 
-    /*
-     * Configure Cucumber plugins via JVM system properties.
-     *
-     * IMPORTANT:
-     * - Reporting configuration is intentionally NOT placed
-     *   in @CucumberOptions to keep the runner environment-agnostic.
-     * - Gradle controls execution concerns (reporting, filtering).
-     */
-    t.systemProperty("cucumber.plugin", String.join(",",
-        "pretty",
-        "html:${reportDir}/cucumber.html",
-        "json:${reportDir}/cucumber.json",
-        "junit:${reportDir}/cucumber.xml",
-        "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
-    ))
+def configureCucumberReporting = { Test t, String suite ->
+
+    // Allure results directory (separate per suite)
+    t.systemProperty "allure.results.directory", "${buildDir}/allure-results/${suite}"
+
+    // Ensure output folder exists for cucumber.json (avoid folder-not-found issues on some systems)
+    t.doFirst {
+        file("${buildDir}/reports/cucumber/${suite}").mkdirs()
+        file("${buildDir}/allure-results/${suite}").mkdirs()
+    }
+
+    // Cucumber plugins:
+    // - pretty: readable console output
+    // - Allure adapter: produces allure-results
+    // - json: machine-readable cucumber report (KPIs / CI / debugging)
+    // - junit: CI-friendly output
+    t.systemProperty "cucumber.plugin",
+            "pretty," +
+            "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm," +
+            "json:${buildDir}/reports/cucumber/${suite}/cucumber.json," +
+            "junit:${buildDir}/reports/cucumber/${suite}/cucumber.xml"
 }
+
+
+
 
 
 /* ===== Tasks ===== */
@@ -236,7 +263,6 @@ tasks.named('test', Test) { Test t ->
      * - cucumber.xml   → CI-friendly JUnit format
      */
     configureCucumberReporting(t, "all")
-    t.systemProperty("allure.results.directory", "$buildDir/allure-results/all")
 }
 
 /**
@@ -312,7 +338,6 @@ tasks.register('apiTest', Test) { Test t ->
      *   build/reports/cucumber/api/
      */
     configureCucumberReporting(t, "api")
-    t.systemProperty("allure.results.directory", "$buildDir/allure-results/api")
 }
 /**
  * Custom Gradle task to execute ONLY UI Cucumber scenarios.
@@ -374,5 +399,4 @@ tasks.register('uiTest', Test) { Test t ->
      *   build/reports/cucumber/ui/
      */
     configureCucumberReporting(t, "ui")
-    t.systemProperty("allure.results.directory", "$buildDir/allure-results/ui")
 }
