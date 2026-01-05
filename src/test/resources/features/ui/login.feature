@@ -11,24 +11,30 @@
 
 Feature: Login
 
-   As a user of the demo application
-   I want to open the Login page
-   So that I can start a session
+  As a user of the demo application
+  I want to log in to the application
+  So that I can access the system according to my role
 
-   @smoke @Login
-   Scenario: Open login page as Administrator
-      Given I am on the login page
-      And I should see the login form
-      Then I log in as role "ADMINISTRATOR"
-   
-   @smoke
-   Scenario: Open login page as a Performance user
-      Given I am on the login page
-      And I should see the login form
-      Then I log in as role "PERFORMANCE"
+  @smoke @login
+  Scenario: Successful login as Administrator
+   Given I am on the login page
+     And the login form is displayed
+   When I log in as role "ADMINISTRATOR"
+   Then I should be successfully logged in
+     And I should see the products page
 
-   @smoke
-   Scenario: Open login page as Standard user
-      Given I am on the login page
-      And I should see the login form
-      Then I log in as role "STANDARD"
+  @smoke @login
+  Scenario: Successful login as Performance user
+    Given I am on the login page
+    And the login form is displayed
+    When I log in as role "PERFORMANCE"
+    Then I should be successfully logged in
+     And I should see the products page
+
+  @smoke @login
+  Scenario: Successful login as Standard user
+    Given I am on the login page
+    And the login form is displayed
+    When I log in as role "STANDARD"
+    Then I should be successfully logged in
+     And I should see the products page

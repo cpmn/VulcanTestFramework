@@ -21,55 +21,6 @@ version = '0.1.0-SNAPSHOT'
 repositories {
     mavenCentral()
 }
-configurations {
-    allureResultsUi
-    allureResultsApi
-    allureResultsAll
-}
-configurations.configureEach {
-    resolutionStrategy.eachDependency { details ->
-        if (details.requested.group == "io.qameta.allure") {
-            details.useVersion(allureVersion)
-            details.because("Align Allure adapters with Allure commandline ${allureVersion}")
-        }
-    }
-}
-
-
-dependencies {
-    // Base test framework (JUnit 4)
-    testImplementation 'junit:junit:4.13.2'
-
-    // Selenium WebDriver
-    testImplementation 'org.seleniumhq.selenium:selenium-java:4.20.0'
-
-    // Cucumber JVM (Java + JUnit)
-    testImplementation 'io.cucumber:cucumber-java:7.15.0'
-    testImplementation 'io.cucumber:cucumber-junit:7.15.0'
-
-    // WebDriverManager (automatic driver downloads)
-    testImplementation 'io.github.bonigarcia:webdrivermanager:5.7.0'
-
-    // Logging - Log4j2
-    testImplementation 'org.apache.logging.log4j:log4j-api:2.24.0'
-    testImplementation 'org.apache.logging.log4j:log4j-core:2.24.0'
-    // SLF4J -> Log4j2 bridge (fixes "No SLF4J providers were found")
-    testImplementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.24.0'
-    
-    // API Testing - RestAssured
-    testImplementation 'io.rest-assured:rest-assured:5.5.0'
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
-}
-
-// Tell Allure plugin where raw results live (as configurations)
-["ui", "api", "all"].each { suite ->
-    dependencies.add("allureResults${suite.capitalize()}",
-        files("$buildDir/allure-results/${suite}")
-    )
-}
-
-
-
 import io.qameta.allure.gradle.report.tasks.AllureReport
 import io.qameta.allure.gradle.report.tasks.AllureServe
 
@@ -104,6 +55,64 @@ ext {
     ]
 }
 
+configurations {
+    allureResultsUi
+    allureResultsApi
+    allureResultsAll
+}
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == "io.qameta.allure") {
+            details.useVersion(allureVersion)
+            details.because("Align Allure adapters with Allure commandline ${allureVersion}")
+        }
+    }
+}
+// Allure Gradle adapter is not configuration-cache friendly (it touches Task.project at execution time).
+// We disable configuration cache only for test execution tasks.
+tasks.withType(Test).configureEach {
+    notCompatibleWithConfigurationCache("Allure adapter is not compatible with Gradle configuration cache for Test tasks.")
+}
+tasks.withType(AllureReport).configureEach {
+    notCompatibleWithConfigurationCache("Allure report tasks are not configuration-cache compatible.")
+}
+
+tasks.withType(AllureServe).configureEach {
+    notCompatibleWithConfigurationCache("Allure serve tasks are not configuration-cache compatible.")
+}
+
+dependencies {
+    // Base test framework (JUnit 4)
+    testImplementation 'junit:junit:4.13.2'
+
+    // Selenium WebDriver
+    testImplementation 'org.seleniumhq.selenium:selenium-java:4.20.0'
+
+    // Cucumber JVM (Java + JUnit)
+    testImplementation 'io.cucumber:cucumber-java:7.15.0'
+    testImplementation 'io.cucumber:cucumber-junit:7.15.0'
+
+    // WebDriverManager (automatic driver downloads)
+    testImplementation 'io.github.bonigarcia:webdrivermanager:5.7.0'
+
+    // Logging - Log4j2
+    testImplementation 'org.apache.logging.log4j:log4j-api:2.24.0'
+    testImplementation 'org.apache.logging.log4j:log4j-core:2.24.0'
+    // SLF4J -> Log4j2 bridge (fixes "No SLF4J providers were found")
+    testImplementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.24.0'
+    
+    // API Testing - RestAssured
+    testImplementation 'io.rest-assured:rest-assured:5.5.0'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
+}
+
+// Tell Allure plugin where raw results live (as configurations)
+["ui", "api", "all"].each { suite ->
+    dependencies.add("allureResults${suite.capitalize()}",
+        files("$buildDir/allure-results/${suite}")
+    )
+}
 
 allure {
     // Allure commandline version used by the report/serve tasks
@@ -116,14 +125,6 @@ allure {
         dependsOnTests.set(false) // keep false; you already run apiTest/uiTest explicitly
     }
 }
-
-// Allure report tasks are commonly not configuration-cache friendly
-
-tasks.withType(AllureReport).configureEach {
-    notCompatibleWithConfigurationCache("Allure report task uses commandline executable resolution.")
-}
-
-
 
 /* =============== Helpers =============== */
 
@@ -215,7 +216,7 @@ def applyFrameworkSystemProps = { Test t ->
  *
  * This prevents report outputs from overwriting each other across suites.
  */
-def configureCucumberReporting = { Test t, String suite ->
+/* def configureCucumberReporting = { Test t, String suite ->
 
    if (debugBuild) {
         logger.lifecycle("[Cucumber-DEBUG] Configuring reporting")
@@ -246,7 +247,33 @@ def configureCucumberReporting = { Test t, String suite ->
             "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm," +        
             "json:${buildDir}/reports/cucumber/${suite}/cucumber.json," +
             "junit:${buildDir}/reports/cucumber/${suite}/cucumber.xml"
+} */
+
+def configureCucumberReporting = { Test t, String suite ->
+
+    // Use Gradle's layout API (configuration-cache friendly)
+    def cucumberDir = layout.buildDirectory.dir("reports/cucumber/${suite}").get().asFile
+    def allureDir   = layout.buildDirectory.dir("allure-results/${suite}").get().asFile
+
+    // Create directories during configuration (NOT at task execution time)
+    cucumberDir.mkdirs()
+    allureDir.mkdirs()
+
+    // Allure results directory (separate per suite)
+    t.systemProperty "allure.results.directory", allureDir.absolutePath
+
+    // Cucumber plugins:
+    // - pretty: readable console output
+    // - Allure adapter: produces allure results
+    // - json: machine-readable cucumber report
+    // - junit: CI-friendly output
+    t.systemProperty "cucumber.plugin",
+            "pretty," +
+            "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm," +
+            "json:${new File(cucumberDir, "cucumber.json").absolutePath}," +
+            "junit:${new File(cucumberDir, "cucumber.xml").absolutePath}"
 }
+
 
 /**
  * Registers a dedicated Cucumber suite as a Gradle Test task (e.g., apiTest, uiTest).
@@ -380,6 +407,8 @@ def registerAllureReportTask = {
 
 /* ===== Tasks ===== */
 
+
+
 tasks.register("allTests") {
     group = "verification"
     description = "Runs UI + API test suites."
@@ -476,7 +505,11 @@ tasks.named('test', Test) { Test t ->
     )
 }
 
-
+tasks.named("uiTest", Test).configure { Test t ->
+    // We want Allure to open even if some tests fail
+    // (especially useful during debugging)
+    ignoreFailures = true
+}
 
 
 
