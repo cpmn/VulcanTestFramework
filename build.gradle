@@ -21,6 +21,19 @@ version = '0.1.0-SNAPSHOT'
 repositories {
     mavenCentral()
 }
+configurations {
+    allureResultsUi
+    allureResultsApi
+    allureResultsAll
+}
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == "io.qameta.allure") {
+            details.useVersion("2.32.0")
+            details.because("Align Allure adapters with Allure commandline 2.32.0")
+        }
+    }
+}
 
 dependencies {
     // Base test framework (JUnit 4)
@@ -46,14 +59,16 @@ dependencies {
     testImplementation 'io.rest-assured:rest-assured:5.5.0'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 
-    //Allure - Cucumber 7 adapter
-    testImplementation platform("io.qameta.allure:allure-bom:2.32.0")
-    testImplementation "io.qameta.allure:allure-cucumber7-jvm"
-    testImplementation "io.qameta.allure:allure-junit4"
+
+// Tell Allure plugin where raw results live (as configurations)
+    add("allureResultsUi",  files("$buildDir/allure-results/ui"))
+    add("allureResultsApi", files("$buildDir/allure-results/api"))
+    add("allureResultsAll", files("$buildDir/allure-results/all"))
     
 }
 
 import io.qameta.allure.gradle.report.tasks.AllureReport
+import io.qameta.allure.gradle.report.tasks.AllureServe
 
 allure {
     // Allure commandline version used by the report/serve tasks
@@ -68,7 +83,7 @@ allure {
 }
 
 // Allure report tasks are commonly not configuration-cache friendly
-import io.qameta.allure.gradle.report.tasks.AllureReport
+
 tasks.withType(AllureReport).configureEach {
     notCompatibleWithConfigurationCache("Allure report task uses commandline executable resolution.")
 }
@@ -168,11 +183,17 @@ def applyFrameworkSystemProps = { Test t ->
 
 def configureCucumberReporting = { Test t, String suite ->
 
+    println "[DEBUG] Configuring Cucumber reporting"
+    println "[DEBUG]   Task name : ${t.name}"
+    println "[DEBUG]   Suite     : ${suite}"
+    println "[DEBUG]   Allure dir: ${buildDir}/allure-results/${suite}"
+
     // Allure results directory (separate per suite)
     t.systemProperty "allure.results.directory", "${buildDir}/allure-results/${suite}"
 
     // Ensure output folder exists for cucumber.json (avoid folder-not-found issues on some systems)
     t.doFirst {
+        println "[DEBUG] doFirst() for task=${t.name}, suite=${suite}"
         file("${buildDir}/reports/cucumber/${suite}").mkdirs()
         file("${buildDir}/allure-results/${suite}").mkdirs()
     }
@@ -183,8 +204,8 @@ def configureCucumberReporting = { Test t, String suite ->
     // - json: machine-readable cucumber report (KPIs / CI / debugging)
     // - junit: CI-friendly output
     t.systemProperty "cucumber.plugin",
-            "pretty," +
-            "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm," +
+            "pretty," +    
+            "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm," +        
             "json:${buildDir}/reports/cucumber/${suite}/cucumber.json," +
             "junit:${buildDir}/reports/cucumber/${suite}/cucumber.xml"
 }
@@ -400,3 +421,21 @@ tasks.register('uiTest', Test) { Test t ->
      */
     configureCucumberReporting(t, "ui")
 }
+
+def baseAllureServe = tasks.named("allureServe", AllureServe)
+
+tasks.register("allureServeUi", AllureServe) {
+    group = "verification"
+    description = "Serves Allure report for UI suite."
+    dependsOn("uiTest", "downloadAllure")
+
+    // ✅ Copy CLI wiring from the plugin-created task
+    allureHome.set(baseAllureServe.flatMap { it.allureHome })
+    allureExecutable.set(baseAllureServe.flatMap { it.allureExecutable })
+
+    resultsDirs = configurations.allureResultsUi
+    notCompatibleWithConfigurationCache("Allure serve uses downloaded CLI and dynamic inputs.")
+}
+
+
+
