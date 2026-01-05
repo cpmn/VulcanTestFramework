@@ -29,11 +29,12 @@ configurations {
 configurations.configureEach {
     resolutionStrategy.eachDependency { details ->
         if (details.requested.group == "io.qameta.allure") {
-            details.useVersion("2.32.0")
-            details.because("Align Allure adapters with Allure commandline 2.32.0")
+            details.useVersion(allureVersion)
+            details.because("Align Allure adapters with Allure commandline ${allureVersion}")
         }
     }
 }
+
 
 dependencies {
     // Base test framework (JUnit 4)
@@ -58,21 +59,55 @@ dependencies {
     // API Testing - RestAssured
     testImplementation 'io.rest-assured:rest-assured:5.5.0'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
-
+}
 
 // Tell Allure plugin where raw results live (as configurations)
-    add("allureResultsUi",  files("$buildDir/allure-results/ui"))
-    add("allureResultsApi", files("$buildDir/allure-results/api"))
-    add("allureResultsAll", files("$buildDir/allure-results/all"))
-    
+["ui", "api", "all"].each { suite ->
+    dependencies.add("allureResults${suite.capitalize()}",
+        files("$buildDir/allure-results/${suite}")
+    )
 }
+
+
 
 import io.qameta.allure.gradle.report.tasks.AllureReport
 import io.qameta.allure.gradle.report.tasks.AllureServe
 
+//Centralize suite names/constants
+ext {
+    allureVersion = "2.32.0"
+
+    cucumberRunner = "com.vulcan.framework.runners.CucumberTestRunner"
+
+    suites = [
+        ui : [
+            id          : "ui",
+            label       : "UI",
+            featuresDir : "src/test/resources/features/ui",
+            testTask    : "uiTest",
+            resultsConf : "allureResultsUi"
+        ],
+        api: [
+            id          : "api",
+            label       : "API",
+            featuresDir : "src/test/resources/features/api",
+            testTask    : "apiTest",
+            resultsConf : "allureResultsApi"
+        ],
+        all: [
+            id          : "all",
+            label       : "ALL",
+            featuresDir : "src/test/resources/features",
+            testTask    : "test",
+            resultsConf : "allureResultsAll"
+        ]
+    ]
+}
+
+
 allure {
     // Allure commandline version used by the report/serve tasks
-    version.set("2.32.0")
+    version.set(allureVersion)
 
     report {
         // Where HTML report is generated (optional customization)
@@ -91,6 +126,13 @@ tasks.withType(AllureReport).configureEach {
 
 
 /* =============== Helpers =============== */
+
+/**
+ * Enables build-script debug logs when running with:
+ *   ./gradlew <task> -Pdebug
+ */
+def debugBuild = project.hasProperty("debug")
+
  /**
  * Applies common framework-level system properties and test configuration
  * to a Gradle Test task.
@@ -164,36 +206,32 @@ def applyFrameworkSystemProps = { Test t ->
 }
 
 /**
- * Configures Cucumber reporting outputs for a specific test suite.
+ * Configures Cucumber + Allure reporting for a suite ("api", "ui", "all").
  *
- * Each Gradle Test task (apiTest, uiTest, test) calls this helper
- * with a different suiteName to ensure reports are isolated and
- * never overwrite each other.
+ * Responsibilities:
+ * 1) Set Allure results directory per suite (build/allure-results/<suite>).
+ * 2) Create suite report folders before execution (doFirst).
+ * 3) Configure Cucumber plugins (pretty, Allure adapter, JSON, JUnit).
  *
- * Output structure:
- *   build/reports/cucumber/api/
- *   build/reports/cucumber/ui/
- *   build/reports/cucumber/all/
- *
- * Reports generated:
- * - HTML  : human-readable report
- * - JSON  : machine-readable (KPIs, trends, Allure integration)
- * - JUnit : CI-friendly test result format
+ * This prevents report outputs from overwriting each other across suites.
  */
-
 def configureCucumberReporting = { Test t, String suite ->
 
-    println "[DEBUG] Configuring Cucumber reporting"
-    println "[DEBUG]   Task name : ${t.name}"
-    println "[DEBUG]   Suite     : ${suite}"
-    println "[DEBUG]   Allure dir: ${buildDir}/allure-results/${suite}"
+   if (debugBuild) {
+        logger.lifecycle("[Cucumber-DEBUG] Configuring reporting")
+        logger.lifecycle("[Cucumber-DEBUG] Task name : ${t.name}")
+        logger.lifecycle("[Cucumber-DEBUG] Suite     : ${suite}")
+        logger.lifecycle("[Cucumber-DEBUG] Allure dir: ${buildDir}/allure-results/${suite}")
+    }
 
     // Allure results directory (separate per suite)
     t.systemProperty "allure.results.directory", "${buildDir}/allure-results/${suite}"
 
     // Ensure output folder exists for cucumber.json (avoid folder-not-found issues on some systems)
     t.doFirst {
-        println "[DEBUG] doFirst() for task=${t.name}, suite=${suite}"
+        if (debugBuild) {
+            logger.lifecycle("[Cucumber-DEBUG] doFirst() for task=${t.name}, suite=${suite}")
+        }
         file("${buildDir}/reports/cucumber/${suite}").mkdirs()
         file("${buildDir}/allure-results/${suite}").mkdirs()
     }
@@ -210,7 +248,133 @@ def configureCucumberReporting = { Test t, String suite ->
             "junit:${buildDir}/reports/cucumber/${suite}/cucumber.xml"
 }
 
+/**
+ * Registers a dedicated Cucumber suite as a Gradle Test task (e.g., apiTest, uiTest).
+ *
+ * Responsibilities:
+ * 1) Create a Gradle Test task with consistent framework settings.
+ * 2) Ensure test classes are compiled before execution.
+ * 3) Limit execution to the single Cucumber JUnit runner to prevent Gradle
+ *    from attempting to execute step definition classes directly.
+ * 4) Set feature discovery to a specific folder (suite isolation).
+ * 5) Configure suite-specific Cucumber + Allure reporting output directories.
+ *
+ * Parameters:
+ * - taskName:      Name of the Gradle task to register (e.g., "apiTest").
+ * - suite:         Suite identifier used for report folder names (e.g., "api", "ui").
+ * - featuresPath:  Path to the feature folder for this suite.
+ * - descriptionText: Human-readable task description.
+ */
+def registerCucumberSuiteTask = { String taskName, String suite, String featuresPath, String descriptionText ->
+    tasks.register(taskName, Test) { Test t ->
+        group = "verification"
+        description = descriptionText
 
+        // Apply shared framework configuration (gradle.properties -> system properties, logging, tag forwarding)
+        applyFrameworkSystemProps(t)
+
+        // Ensure test classes are compiled before executing this suite.
+        dependsOn(tasks.named("testClasses"))
+
+        // Explicit test output and runtime classpath required for custom Test tasks.
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+
+        // Restrict execution to the Cucumber JUnit runner only.
+        filter {
+            includeTestsMatching(cucumberRunner)
+        }
+
+        // Folder-based feature discovery for deterministic suite execution.
+        systemProperty("cucumber.features", featuresPath)
+
+        // Configure suite-specific Cucumber + Allure reporting outputs.
+        configureCucumberReporting(t, suite)
+    }
+}
+
+def baseAllureServe = tasks.named("allureServe", AllureServe)
+/**
+ * Registers an AllureServe task for a specific test suite (UI, API, etc.).
+ *
+ * Responsibilities:
+ * 1) Serve an Allure HTML report for a single suite.
+ * 2) Ensure the corresponding test suite is executed before serving.
+ * 3) Reuse the Allure CLI configuration from the plugin-created task.
+ * 4) Point Allure to the correct suite-specific results directory.
+ *
+ * Parameters:
+ * - taskName:        Name of the Gradle task (e.g., "allureServeUi").
+ * - suiteName:       Human-readable suite name for descriptions.
+ * - testTaskName:    Test task that must run before serving (e.g., "uiTest").
+ * - resultsConfig:   Configuration containing the Allure results directory.
+ */
+def registerAllureServeTask = { 
+        String taskName,
+        String suiteName,
+        String testTaskName,
+        Configuration resultsConfig ->
+
+    tasks.register(taskName, AllureServe) {
+        group = "verification"
+        description = "Serves Allure report for ${suiteName} suite."
+
+        dependsOn(testTaskName, "downloadAllure")
+
+        // Reuse CLI wiring from plugin-created allureServe task
+        allureHome.set(baseAllureServe.flatMap { it.allureHome })
+        allureExecutable.set(baseAllureServe.flatMap { it.allureExecutable })
+
+        // Point Allure to suite-specific results
+        resultsDirs = resultsConfig
+
+        notCompatibleWithConfigurationCache(
+            "Allure serve uses downloaded CLI and dynamic inputs."
+        )
+    }
+}
+/**
+ * Registers an AllureReport task for a specific test suite (UI, API, etc.).
+ *
+ * Responsibilities:
+ * 1) Generate a static Allure HTML report for a single suite.
+ * 2) Ensure the corresponding test suite is executed before report generation.
+ * 3) Reuse the Allure CLI configuration from the plugin-created task.
+ * 4) Isolate report output per suite to avoid overwrites.
+ *
+ * Parameters:
+ * - taskName:        Name of the Gradle task (e.g., "allureReportUi").
+ * - suiteName:       Human-readable suite name for descriptions.
+ * - testTaskName:    Test task that must run before report generation.
+ * - resultsConfig:   Configuration containing the Allure results directory.
+ * - reportDirName:   Folder name under build/reports/allure/.
+ */
+def registerAllureReportTask = {
+        String taskName,
+        String suiteName,
+        String testTaskName,
+        Configuration resultsConfig,
+        String reportDirName ->
+
+    tasks.register(taskName, AllureReport) {
+        group = "verification"
+        description = "Generates Allure HTML report for ${suiteName} suite."
+
+        dependsOn(testTaskName, "downloadAllure")
+
+        // Reuse CLI wiring from plugin-created AllureReport task
+        allureHome.set(baseAllureServe.flatMap { it.allureHome })
+        allureExecutable.set(baseAllureServe.flatMap { it.allureExecutable })
+
+        // Suite-specific inputs & outputs
+        resultsDirs = resultsConfig
+        reportDir.set(layout.buildDirectory.dir("reports/allure/${reportDirName}"))
+
+        notCompatibleWithConfigurationCache(
+            "Allure report uses downloaded CLI and dynamic inputs."
+        )
+    }
+}
 
 
 
@@ -286,156 +450,34 @@ tasks.named('test', Test) { Test t ->
     configureCucumberReporting(t, "all")
 }
 
-/**
- * Custom Gradle task to execute ONLY API Cucumber scenarios.
- *
- * Key responsibilities:
- * - Execute API features located under src/test/resources/features/api
- * - Reuse the shared Cucumber runner (no duplication of runners)
- * - Apply framework-wide configuration (system properties, logging, tags)
- * - Generate isolated API reports under build/reports/cucumber/api
- *
- * This task is designed to be:
- * - Deterministic (folder-based execution, no tag dependency)
- * - CI-friendly (clean separation from UI tests)
- */
-tasks.register('apiTest', Test) { Test t ->
+["ui", "api"].each { s ->
+    def suite = suites[s]
 
-    /*
-     * Assign the task to the "verification" group so it appears
-     * alongside other test-related Gradle tasks.
-     */
-    group = "verification"
+    registerCucumberSuiteTask(
+        suite.testTask,
+        suite.id,
+        suite.featuresDir,
+        "Runs ${suite.label} Cucumber features only (${suite.featuresDir})."
+    )
 
-    /*
-     * Human-readable description shown in:
-     *   ./gradlew tasks
-     */
-    description = "Runs API Cucumber features only (features/api)."
+    registerAllureServeTask(
+        "allureServe${suite.label}",
+        suite.label,
+        suite.testTask,
+        configurations.named(suite.resultsConf).get()
+    )
 
-    /*
-     * Apply shared framework configuration:
-     * - Maps gradle.properties → JVM system properties
-     * - Forwards Cucumber tag filters (-Dcucumber.filter.tags)
-     * - Configures test logging and execution behavior
-     */
-    applyFrameworkSystemProps(t)
-
-    /*
-     * Ensure test classes are compiled before executing this task.
-     * This avoids NO-SOURCE issues when running custom Test tasks.
-     */
-    t.dependsOn(tasks.named("testClasses"))
-
-    /*
-     * Explicitly define where compiled test classes live
-     * and which runtime classpath should be used.
-     *
-     * Required for non-default Test tasks.
-     */
-    t.testClassesDirs = sourceSets.test.output.classesDirs
-    t.classpath = sourceSets.test.runtimeClasspath
-
-    /*
-     * Restrict execution to the single Cucumber JUnit runner.
-     * This prevents Gradle from trying to execute step definition
-     * classes or other test classes directly.
-     */
-    t.filter {
-        includeTestsMatching("com.vulcan.framework.runners.CucumberTestRunner")
-    }
-
-    /*
-     * Folder-based feature discovery:
-     * Only API feature files are loaded.
-     *
-     * This guarantees API-only execution without relying on tags.
-     */
-    t.systemProperty("cucumber.features", "src/test/resources/features/api")
-
-    /*
-     * Configure Cucumber reporting for the API suite.
-     * Outputs are written to:
-     *   build/reports/cucumber/api/
-     */
-    configureCucumberReporting(t, "api")
-}
-/**
- * Custom Gradle task to execute ONLY UI Cucumber scenarios.
- *
- * Key responsibilities:
- * - Execute UI features located under src/test/resources/features/ui
- * - Initialize and teardown browser via Hooks
- * - Apply shared framework configuration
- * - Generate isolated UI reports under build/reports/cucumber/ui
- *
- * This task is designed for:
- * - Local UI development
- * - CI UI pipelines (headless execution)
- * - Clear separation from API testing
- */
-tasks.register('uiTest', Test) { Test t ->
-    group = "verification"
-    description = "Runs UI Cucumber features only (features/ui)."
-
-    /*
-     * Apply shared framework configuration:
-     * - gradle.properties → JVM system properties
-     * - Tag forwarding
-     * - Logging configuration
-     */
-    applyFrameworkSystemProps(t)
-
-    /*
-     * Ensure test classes are compiled before executing this task.
-     */
-    t.dependsOn(tasks.named("testClasses"))
-
-    /*
-     * Explicitly define test class output and runtime classpath.
-     * Required for custom Test tasks.
-     */
-    t.testClassesDirs = sourceSets.test.output.classesDirs
-    t.classpath = sourceSets.test.runtimeClasspath
-
-    /*
-     * Restrict execution to the Cucumber JUnit runner only.
-     */
-    t.filter {
-        includeTestsMatching("com.vulcan.framework.runners.CucumberTestRunner")
-    }
-
-    /*
-     * Folder-based feature discovery:
-     * Only UI feature files are loaded.
-     *
-     * Browser initialization is handled automatically
-     * by framework Hooks for UI scenarios.
-     */
-    t.systemProperty("cucumber.features", "src/test/resources/features/ui")
-
-    /*
-     * Configure Cucumber reporting for the UI suite.
-     * Outputs are written to:
-     *   build/reports/cucumber/ui/
-     */
-    configureCucumberReporting(t, "ui")
+    registerAllureReportTask(
+        "allureReport${suite.label}",
+        suite.label,
+        suite.testTask,
+        configurations.named(suite.resultsConf).get(),
+        suite.id
+    )
 }
 
-def baseAllureServe = tasks.named("allureServe", AllureServe)
 
-tasks.register("allureServeUi", AllureServe) {
-    group = "verification"
-    description = "Serves Allure report for UI suite."
-    dependsOn("uiTest", "downloadAllure")
 
-    // ✅ Copy CLI wiring from the plugin-created task
-    allureHome.set(baseAllureServe.flatMap { it.allureHome })
-    allureExecutable.set(baseAllureServe.flatMap { it.allureExecutable })
-
-    resultsDirs = configurations.allureResultsUi
-    notCompatibleWithConfigurationCache("Allure serve uses downloaded CLI and dynamic inputs.")
-}
 
 
 
