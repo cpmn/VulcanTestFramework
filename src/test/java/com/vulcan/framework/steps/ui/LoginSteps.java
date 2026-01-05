@@ -14,6 +14,12 @@ package com.vulcan.framework.steps.ui;
 import com.vulcan.framework.ui.actions.LoginActions;
 import com.vulcan.framework.ui.assertions.UiAssertions;
 import com.vulcan.framework.ui.pages.LoginPage;
+
+import static org.junit.Assert.assertTrue;
+
+import org.openqa.selenium.WebDriver;
+
+import com.vulcan.framework.core.DriverFactory;
 import com.vulcan.framework.shared.auth.Credentials;
 import com.vulcan.framework.shared.context.ScenarioContext;
 import com.vulcan.framework.shared.context.ScenarioKeys;
@@ -32,7 +38,7 @@ public class LoginSteps {
         // Keep this minimal. Hooks already navigates to ui.baseUrl.
         // Optionally later: loginPage.open();
     }
-    @Then("I should see the login form")
+    @Then("the login form is displayed")
     public void i_should_see_the_login_form() {
         UiAssertions.assertLoginFormVisible(loginPage);
     }
@@ -42,5 +48,24 @@ public class LoginSteps {
         // Store for later steps (UI and/or API)
         ScenarioContext.put(ScenarioKeys.CREDENTIALS, credentials);
         loginActions.login(credentials.username(), credentials.password());
-    }    
+    }
+
+    /**
+     * Implements:
+     * Then I should be successfully logged in
+     */
+    @Then("I should be successfully logged in")
+    public void i_should_be_successfully_logged_in() {
+        UiAssertions.assertSuccessfullyLoggedIn();
+    }
+
+    /**
+     * Implements:
+     * And I should see the products page
+     */
+    @Then("I should see the products page")
+    public void i_should_see_the_products_page() {
+        UiAssertions.assertProductsPageVisible();
+    }
+   
 }

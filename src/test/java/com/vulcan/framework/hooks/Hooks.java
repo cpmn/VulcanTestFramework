@@ -29,6 +29,11 @@ import java.util.Collection;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+
+import io.qameta.allure.Allure;
+
 
 /**
  * Cucumber Hooks responsible for:
@@ -114,10 +119,20 @@ public class Hooks {
         final boolean uiStarted = Boolean.TRUE.equals(uiBrowserStarted.get());
 
         Exception browserQuitError = null;
+        Exception screenshotError = null;
         Exception dataCleanupError = null;
         Exception apiRegistryClearError = null;
 
         try {
+            // 0) Screenshot on UI failure BEFORE quitting browser
+            try {
+                if (uiStarted && scenario.isFailed()) {
+                    attachUiFailureScreenshot(scenarioName);
+                }
+            } catch (Exception e) {
+                screenshotError = e;
+                logger.error("Screenshot capture failed for Scenario='{}': {}", scenarioName, e.getMessage(), e);
+            }
             // 1) Quit browser (UI only)
             try {
                 if (uiStarted && DriverFactory.isDriverInitialized()) {
@@ -176,6 +191,7 @@ public class Hooks {
                 scenarioName,
                 uiStarted,
                 scenario.getStatus(),
+                (screenshotError != null),
                 (browserQuitError != null),
                 (dataCleanupError != null),
                 (apiRegistryClearError != null)
@@ -214,4 +230,29 @@ public class Hooks {
 
         return false;
     }
+
+    private void attachUiFailureScreenshot(String scenarioName) {
+    try {
+        if (!DriverFactory.isDriverInitialized()) return;
+
+        WebDriver driver = DriverFactory.getDriver();
+        if (!(driver instanceof TakesScreenshot)) return;
+
+        byte[] png = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+
+        // Allure will show it under "Attachments"
+        Allure.getLifecycle().addAttachment(
+            "UI Failure Screenshot - " + scenarioName,
+            "image/png",
+            "png",
+            png
+        );
+
+        logger.info("Attached Allure screenshot for failed scenario='{}'", scenarioName);
+
+    } catch (Exception e) {
+        logger.warn("Failed to attach Allure screenshot for scenario='{}': {}", scenarioName, e.getMessage());
+    }
+}
+
 }
