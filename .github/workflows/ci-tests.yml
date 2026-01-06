@@ -1,0 +1,106 @@
+name: CI Tests (UI + API)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    name: API Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      # Optional: force key properties from CI (if not already in gradle.properties)
+      - name: Run API tests + generate Allure report
+        run: |
+          ./gradlew clean apiTest allureReportAPI --no-configuration-cache
+        env:
+          # These env vars are OPTIONAL. Your build already maps gradle.properties → system props.
+          # Keep them only if you want CI to override defaults.
+          # OR pass as -D properties (shown in UI job below).
+          CI: "true"
+
+      - name: Upload API artifacts (Allure + Cucumber)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-artifacts
+          path: |
+            build/reports/allure/api/**
+            build/allure-results/api/**
+            build/reports/cucumber/api/**
+            build/test-results/apiTest/**
+            build/reports/tests/apiTest/**
+
+
+  ui-tests:
+    name: UI Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      # Run UI tests but DO NOT stop the job; we want to generate/upload Allure anyway.
+      - name: Run UI tests (capture exit code)
+        id: ui_test
+        run: |
+          set +e
+          ./gradlew clean uiTest --no-configuration-cache
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          set -e
+        env:
+          CI: "true"
+
+      - name: Generate Allure report for UI
+        if: always()
+        run: |
+          ./gradlew allureReportUI --no-configuration-cache
+
+      - name: Upload UI artifacts (Allure + Cucumber)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-artifacts
+          path: |
+            build/reports/allure/ui/**
+            build/allure-results/ui/**
+            build/reports/cucumber/ui/**
+            build/test-results/uiTest/**
+            build/reports/tests/uiTest/**
+
+      # Make the job fail if UI tests failed (so PR checks are meaningful)
+      - name: Fail job if UI tests failed
+        if: always()
+        run: |
+          code='${{ steps.ui_test.outputs.exit_code }}'
+          echo "UI test exit code: $code"
+          if [ "$code" != "0" ]; then
+            exit "$code"
+          fi
